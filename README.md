@@ -2,22 +2,22 @@
 A python library for face detection and features extraction based on mediapipe library
 
 ## Introduction
-FaceAnalyzer is a library based on mediapipe library and is provided under MIT Licence. It provides an object orientation tool to play around with faces.
+FaceAnalyzer is a library based on mediapipe library and is provided under MIT Licence. It provides an object oriented tool to play around with faces.
 It can be used to :
-1 - Extract faces from an image
-2 - Measure the face position and orientation
-3 - Measure eyes openings
-4 - Detect blinks
-5 - Extract the face from an image (useful for face learning applications)
-6 - Compute face triangulation (builds triangular surfaces that can be used to build 3D models of the face)
-7 - Copy a face from an image to another.
+1. Extract faces from an image
+2. Measure the face position and orientation
+3. Measure eyes openings
+4. Detect blinks
+5. Extract the face from an image (useful for face learning applications)
+6. Compute face triangulation (builds triangular surfaces that can be used to build 3D models of the face)
+7. Copy a face from an image to another.
 
 ## Requirements
 This library requires :
-1 - mediapipe (used for facial landmarks extraction)
-2 - opencv used for drawing and image morphing
-3 - scipy used for efficient delaulay triangulation
-4 - numpy, as any thing that uses math
+1. mediapipe (used for facial landmarks extraction)
+2. opencv used for drawing and image morphing
+3. scipy used for efficient delaulay triangulation
+4. numpy, as any thing that uses math
 
 
 ## How to install
@@ -48,3 +48,12 @@ if fa.nb_faces>0:
 ```
 
 Make sure you look at the examples folder in the repository for more details.
+## Examples
+### face_mesh :
+    A basic simple example of how to use webcam to get video and process each frame to extract faces and draw face landmarks on the face.
+### from_image :
+    A basic simple example of how to extract faces from an image file.
+### eye_process :
+    An example of how to extract faces from a video (using webcam) then process eyes and return eyes openings as well as detecting blinks.
+### face_off :
+    An example of how to use webcam to switch faces between two persons.

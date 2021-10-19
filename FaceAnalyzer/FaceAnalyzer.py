@@ -23,13 +23,12 @@ class FaceAnalyzer():
     """A class that analyzes the facial components
     """
 
-    def __init__(self, max_nb_faces=1, image_shape: tuple = (480, 640), blink_th: float = 5):
+    def __init__(self, max_nb_faces=1, image_shape: tuple = (480, 640)):
         """Creates an instance of the FaceAnalyzer object
 
         Args:
             max_nb_faces (int,optional) : The maximum number of faces to be detected by the mediapipe library
             image_shape (tuple, optional): The shape of the image to be processed. Defaults to (480, 640).
-            blink_th (float, optional): A eye opening threshold in pixels for eyes distance of 1 used by Face objects to detect blinks. Defaults to 5.
         """
         self.mp_drawing = mp.solutions.drawing_utils
         self.fmd = mp.solutions.face_mesh.FaceMesh(refine_landmarks=True, max_num_faces=max_nb_faces)
@@ -38,7 +37,6 @@ class FaceAnalyzer():
         self.faces = [Face(), Face()]
         self.image_shape = image_shape
         self.image = None
-        self.blink_th = blink_th
         self.results = None
         self.found_faces = False
         self.found_faces = False

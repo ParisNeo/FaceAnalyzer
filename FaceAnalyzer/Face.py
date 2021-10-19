@@ -21,7 +21,7 @@ class Face():
     """Face is the class that provides operations on face landmarks.
     It is extracted by the face analyzer and could then be used for multiple face features extraction purposes
     """
-    def __init__(self, landmarks:NamedTuple = None, image_shape: tuple = (480, 640), blink_th=5):
+    def __init__(self, landmarks:NamedTuple = None, image_shape: tuple = (480, 640)):
         """Creates an instance of Face
 
         Args:
@@ -42,7 +42,6 @@ class Face():
         self.right_eyelids_indices = [130, 145, 133, 159]
         self.right_eye_center_index = 468
 
-        self.blink_th = blink_th
         self.blinking = False
 
         self.face_oval = list(set(
@@ -275,7 +274,7 @@ class Face():
         # If no reference was taken, then use this posture as the reference
         if self.reference_facial_cloud is None:
             self.reference_facial_cloud = facial_cloud
-            
+
         # Now we decompose the facial cloud matrix multiplied by the reference facial cloud matrix to obtain the rotation matrix
         u, s, vh = np.linalg.svd(facial_cloud.T @ self.reference_facial_cloud)
         R = vh @ u.T
@@ -297,19 +296,21 @@ class Face():
         pos = self.getlandmarks_pos([self.left_eye_center_index, self.right_eye_center_index])
         return np.linalg.norm(pos[1,:]-pos[0,:])
 
-    def process_eyes(self, image: np.ndarray, detect_blinks: bool = False, normalize:bool=False, draw_landmarks: bool = False)->tuple:
+    def process_eyes(self, image: np.ndarray, normalize:bool=False, detect_blinks: bool = False, blink_th:float=5, blinking_double_threshold_factor:float=1.05, draw_landmarks: bool = False)->tuple:
         """Process eye information and extract eye opening value, normalized eye opening and detect blinks
 
         Args:
             image (np.ndarray): Image to draw on when landmarks are to be drawn
-            detect_blinks (bool, optional): If True, blinks will be detected. Defaults to False.
             normalize (bool, optional): If True, the eye opening will be normalized by the distance between the eyes. Defaults to False.
+            detect_blinks (bool, optional): If True, blinks will be detected. Defaults to False.
+            blink_th (float, optional): Blink threshold. Defaults to 5.
+            blinking_double_threshold_factor (float, optional): a factor for double blinking threshold detection. 1 means that the threshold is the same for closing and opening. If you put 1.2, it means that after closing, the blinking is considered finished only when the opening surpssess the blink_threshold*1.2. Defaults to 1.05.
             draw_landmarks (bool, optional): If True, the landmarks will be drawn on the image. Defaults to False.
 
         Returns:
             tuple: Depending on what configuration was chosen in the parameters, the output is:
-            eft_eye_opening, right_eye_opening, is_blink if blinking detection is activated
-            eft_eye_opening, right_eye_opening if blinking detection is deactivated
+            left_eye_opening, right_eye_opening, is_blink if blinking detection is activated
+            left_eye_opening, right_eye_opening if blinking detection is deactivated
         """
 
         left_eye_center = self.getlandmark_pos(self.left_eye_center_index)
@@ -337,8 +338,6 @@ class Face():
             image = self.draw_landmark(image, right_eye_center, (255, 0, 255))
 
 
-            image = self.draw_landmark(image, left_eye_upper, (255, 255, 255))
-            image = self.draw_landmark(image, left_eye_lower, (255, 255, 255))
 
         # Compute eye opening
         left_eye_opening = np.linalg.norm(left_eye_upper-left_eye_lower) 
@@ -349,9 +348,9 @@ class Face():
             ed = self.getEyesDist()
             left_eye_opening /= ed
             right_eye_opening /= ed
-            th = self.blink_th / ed
+            th = blink_th / ed
         else:
-            th = self.blink_th
+            th = blink_th
 
         if detect_blinks:
             is_blink = False
@@ -359,7 +358,7 @@ class Face():
             if eye_opening < th and not self.blinking:
                 self.blinking = True
                 is_blink = True
-            elif eye_opening > th*1.05:
+            elif eye_opening > th*blinking_double_threshold_factor:
                 self.blinking = False
 
             return left_eye_opening, right_eye_opening, is_blink

@@ -17,6 +17,7 @@ cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 
 # Build face analyzer
 fa = FaceAnalyzer(max_nb_faces=2)
+# Main Loop
 while cap.isOpened():
     # Read an image from the camera
     success, image = cap.read()

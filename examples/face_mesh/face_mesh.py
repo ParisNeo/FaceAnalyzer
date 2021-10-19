@@ -19,7 +19,7 @@ fa = FaceAnalyzer(max_nb_faces=1)
 prev_frame_time = time.time()
 curr_frame_time = time.time()
 
-# While the camera is opened
+# Main Loop
 while cap.isOpened():
     # Read image
     success, image = cap.read()
