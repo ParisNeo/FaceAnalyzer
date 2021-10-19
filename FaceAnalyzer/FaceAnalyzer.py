@@ -23,7 +23,7 @@ class FaceAnalyzer():
     """A class that analyzes the facial components
     """
 
-    def __init__(self, max_nb_faces=2, image_shape: tuple = (480, 640), blink_th: float = 5):
+    def __init__(self, max_nb_faces=1, image_shape: tuple = (480, 640), blink_th: float = 5):
         """Creates an instance of the FaceAnalyzer object
 
         Args:
@@ -37,6 +37,7 @@ class FaceAnalyzer():
 
         self.faces = [Face(), Face()]
         self.image_shape = image_shape
+        self.image = None
         self.blink_th = blink_th
         self.results = None
         self.found_faces = False
@@ -53,7 +54,13 @@ class FaceAnalyzer():
         Returns:
             NamedTuple: The result of extracting the image
         """
+        # Process the image
         results = self.fmd.process(image)
+
+        # Keep a local reference to the image
+        self.image = image
+
+        # If faces found
         if results.multi_face_landmarks is not None:
             self.found_faces = True
             self.nb_faces = len(results.multi_face_landmarks)
@@ -61,6 +68,8 @@ class FaceAnalyzer():
             self.found_faces = False
             self.nb_faces = 0
             return
+
+        # Update faces
         for i, lm in enumerate(results.multi_face_landmarks):
             self.faces[i].update(lm)
         for i in range(len(results.multi_face_landmarks),self.max_nb_faces):
@@ -72,3 +81,21 @@ class FaceAnalyzer():
                     face.draw_mask(image)
 
         self.results = results
+    @staticmethod
+    def from_image(file_name:str, max_nb_faces:int=1, image_shape:tuple=(640, 480)):
+        """Opens an image and extracts a face from it
+
+        Args:
+            file_name (str)                 : The name of the image file containing one or multiple faces
+            max_nb_faces (int, optional)    : The maximum number of faces to extract. Defaults to 1
+            image_shape (tuple, optional)   : The image shape. Defaults to (640, 480)
+
+        Returns:
+            An instance of FaceAnalyzer: A face analyzer containing all processed faces out of the image. Ile image can be found at fa.image
+        """
+        fa = FaceAnalyzer(max_nb_faces=max_nb_faces)
+        image = Image.open(file_name)
+        image = image.resize(image_shape)
+        npImage = np.array(image)[...,:3]
+        fa.process(npImage)
+        return fa

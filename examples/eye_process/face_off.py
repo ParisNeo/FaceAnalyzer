@@ -16,7 +16,7 @@ cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 # cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
 # Build face analyzer
-fa = FaceAnalyzer(max_nb_faces=2)
+fa = FaceAnalyzer(max_nb_faces=1)
 while cap.isOpened():
     # Read an image from the camera
     success, image = cap.read()
@@ -24,8 +24,8 @@ while cap.isOpened():
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     # Process it
     fa.process(image, draw_mask=False)
-    #Now if we find two faces, we switch them
-    if fa.nb_faces==2:
+    #Now if we find a face
+    if fa.nb_faces==1:
         # Extract face triangles from Face 1
         fa.faces[0].triangulate(landmark_indices=fa.faces[0].simplified_face_features)
         # Set face 2 triangles as those of face1
