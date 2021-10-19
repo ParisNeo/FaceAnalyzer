@@ -50,10 +50,10 @@ if fa.nb_faces>0:
 Make sure you look at the examples folder in the repository for more details.
 ## Examples
 ### face_mesh :
-    A basic simple example of how to use webcam to get video and process each frame to extract faces and draw face landmarks on the face.
+A basic simple example of how to use webcam to get video and process each frame to extract faces and draw face landmarks on the face.
 ### from_image :
-    A basic simple example of how to extract faces from an image file.
+A basic simple example of how to extract faces from an image file.
 ### eye_process :
-    An example of how to extract faces from a video (using webcam) then process eyes and return eyes openings as well as detecting blinks.
+An example of how to extract faces from a video (using webcam) then process eyes and return eyes openings as well as detecting blinks.
 ### face_off :
-    An example of how to use webcam to switch faces between two persons.
+An example of how to use webcam to switch faces between two persons.

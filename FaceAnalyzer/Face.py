@@ -116,6 +116,10 @@ class Face():
         Returns:
             float: The width of the left eye
         """
+
+        # Assertion to verify that the face object is ready
+        assert self.ready, "Face object is not ready. There are no landmarks extracted."
+
         p1 = self.getlandmark_pos(self.left_eye_contour_indices[2])
         p2 = self.getlandmark_pos(self.left_eye_contour_indices[0])
         return np.abs(p2[0] - p1[0])
@@ -126,6 +130,10 @@ class Face():
         Returns:
             float: The height of the left eye
         """        
+
+        # Assertion to verify that the face object is ready
+        assert self.ready, "Face object is not ready. There are no landmarks extracted."
+
         p1 = self.getlandmark_pos(self.left_eye_contour_indices[3])
         p2 = self.getlandmark_pos(self.left_eye_contour_indices[1])
         return np.abs(p2[1] - p1[1])
@@ -136,6 +144,10 @@ class Face():
         Returns:
             float: The width of the right eye
         """        
+
+        # Assertion to verify that the face object is ready
+        assert self.ready, "Face object is not ready. There are no landmarks extracted."
+
         p1 = self.getlandmark_pos(self.right_eye_contour_indices[2])
         p2 = self.getlandmark_pos(self.right_eye_contour_indices[0])
         return np.abs(p2[0] - p1[0])
@@ -146,6 +158,10 @@ class Face():
         Returns:
             float: The height of the left eye
         """        
+
+        # Assertion to verify that the face object is ready
+        assert self.ready, "Face object is not ready. There are no landmarks extracted."
+
         p1 = self.getlandmark_pos(self.right_eye_contour_indices[3])
         p2 = self.getlandmark_pos(self.right_eye_contour_indices[1])
         return np.abs(p2[1] - p1[1])
@@ -159,8 +175,13 @@ class Face():
         Returns:
             Tuple: Landmark 3D position in image space
         """
+
+        # Assertion to verify that the face object is ready
+        assert self.ready, "Face object is not ready. There are no landmarks extracted."
+
         lm = self.npLandmarks[index, ...]
         return (lm[0], lm[1], lm[2])
+
 
     def getlandmarks_pos(self, indices: list) -> np.ndarray:
         """Recovers the position of a landmark from a results array
@@ -171,6 +192,10 @@ class Face():
         Returns:
             np.ndarray: A nX3 array where n is the number of landmarks to be extracted and 3 are the 3 cartesian coordinates
         """
+
+        # Assertion to verify that the face object is ready
+        assert self.ready, "Face object is not ready. There are no landmarks extracted."
+
         return self.npLandmarks[indices,...]
 
     def draw_landmark(self, image: np.ndarray, pos: tuple, color: tuple = (255, 0, 0), radius: int = 5, thickness:int=1) -> np.ndarray:
@@ -187,8 +212,7 @@ class Face():
             np.ndarray: [description]
         """
         return cv2.circle(
-            image,
-            (int(pos[0]), int(pos[1])), radius, color, thickness
+            image,(int(pos[0]), int(pos[1])), radius, color, thickness
         )
 
     def draw_contour(self, image: np.ndarray, contour: np.ndarray, color: tuple = (255, 0, 0), thickness: int = 1) -> np.ndarray:
@@ -205,8 +229,8 @@ class Face():
         Returns:
             np.ndarray: The image with the contour drawn on it
         """
-        pts = np.array([[int(p[0]), int(p[1])]
-                        for p in contour.tolist()]).reshape((-1, 1, 2))
+
+        pts = np.array([[int(p[0]), int(p[1])] for p in contour.tolist()]).reshape((-1, 1, 2))
         return cv2.polylines(image, [pts], True, color, thickness)
 
     def draw_overlay_on_left_iris(self, image:np.ndarray, overlay:np.ndarray)->np.ndarray:
@@ -219,6 +243,12 @@ class Face():
         Returns:
             np.ndarray: The image with the overlay drawn
         """
+
+        # Assertion to verify that the face object is ready
+        assert self.ready, "Face object is not ready. There are no landmarks extracted."
+
+
+
         pImage = Image.fromarray(image)
         pos = self.getlandmark_pos(self.left_eye_center_index)[0:2]
 
@@ -242,6 +272,10 @@ class Face():
         Returns:
             np.ndarray: The image with the overlay drawn
         """
+
+        # Assertion to verify that the face object is ready
+        assert self.ready, "Face object is not ready. There are no landmarks extracted."
+
         pImage = Image.fromarray(image)
         pos = self.getlandmark_pos(self.right_eye_center_index)[0:2]
 
@@ -265,6 +299,11 @@ class Face():
         Returns:
             tuple: (position, orientation) the orientation is either in rotation matrix format (orientation_style==0) or in euler angles style : orientation_style==1
         """
+
+        # Assertion to verify that the face object is ready
+        assert self.ready, "Face object is not ready. There are no landmarks extracted."
+
+
         # Head position
         face_pos = self.npLandmarks.mean(axis=0)
 
@@ -293,6 +332,11 @@ class Face():
         Returns:
             int: The distance between the two eyes
         """
+
+        # Assertion to verify that the face object is ready
+        assert self.ready, "Face object is not ready. There are no landmarks extracted."
+
+
         pos = self.getlandmarks_pos([self.left_eye_center_index, self.right_eye_center_index])
         return np.linalg.norm(pos[1,:]-pos[0,:])
 
@@ -312,6 +356,10 @@ class Face():
             left_eye_opening, right_eye_opening, is_blink if blinking detection is activated
             left_eye_opening, right_eye_opening if blinking detection is deactivated
         """
+
+        # Assertion to verify that the face object is ready
+        assert self.ready, "Face object is not ready. There are no landmarks extracted."
+
 
         left_eye_center = self.getlandmark_pos(self.left_eye_center_index)
         left_eyelids_contour = self.getlandmarks_pos(self.left_eyelids_indices)
@@ -377,6 +425,10 @@ class Face():
         Returns:
             list: A list of triangles extracted by Denaulay algorithm
         """
+
+        # Assertion to verify that the face object is ready
+        assert self.ready, "Face object is not ready. There are no landmarks extracted."
+
         if landmark_indices is None:
             landmarks = self.npLandmarks[:, :2]
         else:
@@ -423,6 +475,10 @@ class Face():
         Returns:
             np.ndarray: Image with triangles drawn on it
         """
+
+        # Assertion to verify that the face object is ready
+        assert self.ready, "Face object is not ready. There are no landmarks extracted."
+
                 
         if landmark_indices is None:
             landmarks = self.npLandmarks[:, :2]
@@ -459,6 +515,10 @@ class Face():
         Returns:
             np.ndarray: Face drawn on a black background (the size of the image is equal of that of the face in the original image)
         """
+
+        # Assertion to verify that the face object is ready
+        assert self.ready, "Face object is not ready. There are no landmarks extracted."
+
         if landmark_indices is None:
             landmarks = self.npLandmarks[:, :2]
         else:
@@ -496,6 +556,10 @@ class Face():
         Returns:
             np.ndarray: [description]
         """
+
+        # Assertion to verify that the face object is ready
+        assert self.ready, "Face object is not ready. There are no landmarks extracted."
+
         # Get landmarks
         if landmark_indices is None:
             src_landmarks = self.npLandmarks[:, :2]
@@ -561,6 +625,11 @@ class Face():
         Args:
             image (np.ndarray): Image to draw the mask on
         """
+
+        # Assertion to verify that the face object is ready
+        assert self.ready, "Face object is not ready. There are no landmarks extracted."
+
+
         self.mp_drawing.draw_landmarks(image, self.landmarks, mp.solutions.face_mesh.FACEMESH_FACE_OVAL,
                                        self.mp_drawing.DrawingSpec(
                                            color=(80, 110, 10), thickness=1, circle_radius=1),
