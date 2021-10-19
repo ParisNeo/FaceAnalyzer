@@ -1,0 +1,5 @@
+numpy
+mediapipe
+scipy
+opencv-python
+Pillow
