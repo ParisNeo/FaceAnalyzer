@@ -21,9 +21,14 @@ This library requires :
 
 
 ## How to install
-Just install from pipy
+Just install from pipy. 
 ```bash
 pip install FaceAnalyzer
+```
+Make sure you upgrade the library from time to time as I am adding new features so frequently those days.
+
+```bash
+pip install FaceAnalyzer --upgrade
 ```
 
 ## How to use
@@ -57,3 +62,8 @@ A basic simple example of how to extract faces from an image file.
 An example of how to extract faces from a video (using webcam) then process eyes and return eyes openings as well as detecting blinks.
 ### face_off :
 An example of how to use webcam to switch faces between two persons.
+### face_mask :
+An example of how to use webcam to put a mask on a face.
+
+
+
