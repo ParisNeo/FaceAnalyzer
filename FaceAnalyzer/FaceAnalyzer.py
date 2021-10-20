@@ -34,7 +34,7 @@ class FaceAnalyzer():
         self.fmd = mp.solutions.face_mesh.FaceMesh(refine_landmarks=True, max_num_faces=max_nb_faces)
         self.max_nb_faces = max_nb_faces
 
-        self.faces = [Face(), Face()]
+        self.faces = [Face() for i in range(max_nb_faces)]
         self.image_shape = image_shape
         self.image = None
         self.results = None
