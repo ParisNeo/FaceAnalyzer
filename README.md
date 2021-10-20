@@ -47,6 +47,7 @@ if fa.nb_faces>0:
     print(f"{fa.nb_faces} Faces found")
     # We can get the landmarks in numpy format NX3 where N is the number of the landmarks and 3 is x,y,z coordinates 
     print(fa.faces[0].npLandmarks)
+    # We can draw all landmarks
     # Get head position and orientation compared to the reference pose (here the first frame will define the orientation 0,0,0)
     pos, ori = fa.faces[0].get_head_posture(orientation_style=1)
 

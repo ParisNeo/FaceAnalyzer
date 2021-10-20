@@ -42,12 +42,11 @@ class FaceAnalyzer():
         self.found_faces = False
         self.nb_faces = 0        
 
-    def process(self, image: np.ndarray, draw_mask: bool = False) -> NamedTuple:
+    def process(self, image: np.ndarray) -> NamedTuple:
         """Processes an image and extracts the faces
 
         Args:
             image (np.ndarray): The image to extract faces from
-            draw_mask (bool, optional): If true, a mask will be drawn on each detected face. Defaults to False.
 
         Returns:
             NamedTuple: The result of extracting the image
@@ -72,11 +71,6 @@ class FaceAnalyzer():
             self.faces[i].update(lm)
         for i in range(len(results.multi_face_landmarks),self.max_nb_faces):
             self.faces[i].update(None)
-
-        if draw_mask:
-            for face in self.faces:
-                if face.ready:
-                    face.draw_mask(image)
 
         self.results = results
     @staticmethod

@@ -39,7 +39,7 @@ while cap.isOpened():
         mask_face.draw_delaunay(image,landmark_indices=mask_face.simplified_face_features)
     else:
         files = []
-        fa.process(image, draw_mask=False)
+        fa.process(image)
         if fa.found_faces:
             for i, face in enumerate(fa.faces):
                 if face.ready:

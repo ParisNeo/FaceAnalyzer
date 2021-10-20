@@ -17,10 +17,29 @@ import math
 import time
 from PIL import Image
 from scipy.spatial import Delaunay
-class Face():
+
+# Get an instance of drawing specs to be used for drawing masks on faces
+DrawingSpec =  mp.solutions.drawing_utils.DrawingSpec
+class Face():    
     """Face is the class that provides operations on face landmarks.
     It is extracted by the face analyzer and could then be used for multiple face features extraction purposes
     """
+
+
+    # Key landmark indices
+    nose_tip_index = 4
+
+    left_eyelids_indices = [362, 374, 263, 386]
+    left_eye_contour_indices = [474, 475, 476, 477]
+    left_eye_center_index = 473
+
+    right_eye_contour_indices = [469, 470, 471, 472]
+    right_eyelids_indices = [130, 145, 133, 159]
+    right_eye_center_index = 468    
+
+    face_orientation_landmarks = [4,127, 152,264]
+
+
     def __init__(self, landmarks:NamedTuple = None, image_shape: tuple = (480, 640)):
         """Creates an instance of Face
 
@@ -32,15 +51,6 @@ class Face():
 
         self.update(landmarks)
 
-
-        self.left_eyelids_indices = [362, 374, 263, 386]
-        self.left_eye_contour_indices = [474, 475, 476, 477]
-
-        self.left_eye_center_index = 473
-
-        self.right_eye_contour_indices = [469, 470, 471, 472]
-        self.right_eyelids_indices = [130, 145, 133, 159]
-        self.right_eye_center_index = 468
 
         self.blinking = False
 
@@ -86,29 +96,7 @@ class Face():
             self.landmarks = None
             self.npLandmarks = np.array([])
 
-    def rotationMatrixToEulerAngles(self, R: np.ndarray) -> np.ndarray:
-        """Computes the Euler angles in the form of Pitch yaw roll
 
-        Args:
-            R (np.ndarray): The rotation matrix
-
-        Returns:
-            np.ndarray: (Pitch, Yaw, Roll)
-        """
-        sy = math.sqrt(R[0, 0] * R[0, 0] + R[1, 0] * R[1, 0])
-
-        singular = sy < 1e-6
-
-        if not singular:
-            x = math.atan2(R[2, 1], R[2, 2])
-            y = math.atan2(-R[2, 0], sy)
-            z = math.atan2(R[1, 0], R[0, 0])
-        else:
-            x = math.atan2(-R[1, 2], R[1, 1])
-            y = math.atan2(-R[2, 0], sy)
-            z = 0
-
-        return np.array([x, y, z])
 
     def get_left_eye_width(self)->float:
         """Gets the left eye width
@@ -198,6 +186,24 @@ class Face():
 
         return self.npLandmarks[indices,...]
 
+    def draw_landmark_by_index(self, image: np.ndarray, index: int, color: tuple = (255, 0, 0), radius: int = 5, thickness:int=1) -> np.ndarray:
+        """Draw a landmark on an image from landmark index
+
+        Args:
+            image (np.ndarray): Image to draw the landmark on
+            index (int): Index of the landmark
+            color (tuple, optional): Color of the landmark. Defaults to (255, 0, 0).
+            radius (int, optional): Radius of the circle to draw the landmark. Defaults to 5.
+            thickness (int, optional): Thickness of the line to draw the landmark. Defaults to 5.
+
+        Returns:
+            np.ndarray: Output image
+        """
+        pos = self.npLandmarks[index,:]
+        return cv2.circle(
+            image,(int(pos[0]), int(pos[1])), radius, color, thickness
+        )
+
     def draw_landmark(self, image: np.ndarray, pos: tuple, color: tuple = (255, 0, 0), radius: int = 5, thickness:int=1) -> np.ndarray:
         """Draw a landmark on an image
 
@@ -209,7 +215,7 @@ class Face():
             thickness (int, optional): Thickness of the line to draw the landmark. Defaults to 5.
 
         Returns:
-            np.ndarray: [description]
+            np.ndarray: Output image
         """
         return cv2.circle(
             image,(int(pos[0]), int(pos[1])), radius, color, thickness
@@ -305,24 +311,25 @@ class Face():
 
 
         # Head position
-        face_pos = self.npLandmarks.mean(axis=0)
+        lm = self.npLandmarks[Face.face_orientation_landmarks,:]
+        face_pos = lm.mean(axis=0)
 
         # Head orientation
-        facial_cloud = self.npLandmarks - face_pos
+        facial_cloud = lm - face_pos
 
         # If no reference was taken, then use this posture as the reference
         if self.reference_facial_cloud is None:
             self.reference_facial_cloud = facial_cloud
 
         # Now we decompose the facial cloud matrix multiplied by the reference facial cloud matrix to obtain the rotation matrix
-        u, s, vh = np.linalg.svd(facial_cloud.T @ self.reference_facial_cloud)
+        u, s, vh = np.linalg.svd(self.reference_facial_cloud.T @ facial_cloud)
         R = vh @ u.T
 
         if orientation_style==0: # Rotation matrix
             face_ori = R
         elif orientation_style==1: # Euler angles in radians
             # Convert to euler angles
-            face_ori = self.rotationMatrixToEulerAngles(R)
+            face_ori = Face.rotationMatrixToEulerAngles(R)
 
         return face_pos, face_ori
 
@@ -366,30 +373,52 @@ class Face():
         left_eye_upper = left_eyelids_contour[3, ...]
         left_eye_lower = left_eyelids_contour[1, ...]
 
+        left_eye_contour = self.getlandmarks_pos(self.left_eye_contour_indices)
+        left_eye_iris_upper = left_eye_contour[3, ...]
+        left_eye_iris_lower = left_eye_contour[1, ...]
+
         right_eye_center = self.getlandmark_pos(self.right_eye_center_index)
         right_eyelids_contour = self.getlandmarks_pos(self.right_eyelids_indices)
         right_eye_upper = right_eyelids_contour[3, ...]
         right_eye_lower = right_eyelids_contour[1, ...]
 
+        right_eye_contour = self.getlandmarks_pos(self.right_eye_contour_indices)
+        right_eye_iris_upper = right_eye_contour[1, ...]
+        right_eye_iris_lower = right_eye_contour[3, ...]
+
+
+
+
         if draw_landmarks:
-            left_eye_contour = self.getlandmarks_pos(self.left_eye_contour_indices)
-            right_eye_contour = self.getlandmarks_pos(self.right_eye_contour_indices)
 
-            image = self.draw_contour(image, left_eyelids_contour, (0, 0, 0))
-            image = self.draw_contour(image, left_eye_contour, (0, 0, 0))
+            image = self.draw_landmark(image, left_eye_upper, (0, 0, 255),1)
+            image = self.draw_landmark(image, left_eye_lower, (0, 0, 255),1)
 
-            image = self.draw_landmark(image, left_eye_center, (255, 0, 255))
 
-            image = self.draw_contour(image, right_eyelids_contour, (0, 0, 0))
-            image = self.draw_contour(image, right_eye_contour, (0, 0, 0))
+            image = self.draw_landmark(image, left_eye_iris_upper, (255, 0, 0),1)
+            image = self.draw_landmark(image, left_eye_iris_lower, (255, 0, 0),1)
 
-            image = self.draw_landmark(image, right_eye_center, (255, 0, 255))
+            image = self.draw_landmark(image, right_eye_upper, (0, 0, 255),1)
+            image = self.draw_landmark(image, right_eye_lower, (0, 0, 255),1)
+
+            image = self.draw_landmark(image, right_eye_iris_upper, (255, 0, 0),1)
+            image = self.draw_landmark(image, right_eye_iris_lower, (255, 0, 0),1)            
+
+            image = self.draw_contour(image, left_eyelids_contour, (0, 0, 0),2)
+            image = self.draw_contour(image, left_eye_contour, (0, 0, 0),2)
+
+            image = self.draw_landmark(image, left_eye_center, (255, 0, 255),1)
+
+            image = self.draw_contour(image, right_eyelids_contour, (0, 0, 0),2)
+            image = self.draw_contour(image, right_eye_contour, (0, 0, 0),2)
+
+            image = self.draw_landmark(image, right_eye_center, (255, 0, 255),1)
 
 
 
         # Compute eye opening
-        left_eye_opening = np.linalg.norm(left_eye_upper-left_eye_lower) 
-        right_eye_opening = np.linalg.norm(right_eye_upper-right_eye_lower)
+        left_eye_opening = np.linalg.norm(left_eye_upper[0:2]-left_eye_lower[0:2])/np.linalg.norm(left_eye_iris_upper[0:2]-left_eye_iris_lower[0:2])
+        right_eye_opening = np.linalg.norm(right_eye_upper[0:2]-right_eye_lower[0:2])/np.linalg.norm(right_eye_iris_upper[0:2]-right_eye_iris_lower[0:2])
 
 
         if normalize:
@@ -554,7 +583,7 @@ class Face():
             opacity (int, optional): the opacity level of the face (between 0 and 1)
 
         Returns:
-            np.ndarray: [description]
+            np.ndarray: An image containing only the face
         """
 
         # Assertion to verify that the face object is ready
@@ -619,7 +648,24 @@ class Face():
         dst_image[int(dst_p1[1]):int(dst_p2[1]), int(dst_p1[0]):int(dst_p2[0])] = dst_crop
         return dst_image
 
-    def draw_mask(self, image:np.ndarray)->None:
+    def draw_bounding_box(self, image:np.ndarray, color:tuple=(255,0,0), thickness:int=1):
+        """Draws a bounding box around the face
+
+        Args:
+            image (np.ndarray): The image on which we will draw the bounding box
+            color (tuple, optional): The color of the bounding box. Defaults to (255,0,0).
+            thickness (int, optional): The line thickness. Defaults to 1.
+        """
+        pt1 = self.npLandmarks.min(axis=0)
+        pt2 = self.npLandmarks.max(axis=0)
+        cv2.rectangle(image, (int(pt1[0]),int(pt1[1])), (int(pt2[0]),int(pt2[1])), color, thickness)
+
+    def draw_mask(self, 
+                    image:np.ndarray, 
+                    landmarks_drawing_spec:DrawingSpec = DrawingSpec(color=(121, 0, 0), thickness=1, circle_radius=1), 
+                    contours_drawing_specs:DrawingSpec = DrawingSpec(color=(0, 0, 121), thickness=1, circle_radius=1),
+                    contour:frozenset=mp.solutions.face_mesh.FACEMESH_FACE_OVAL
+                    )->None:
         """Draws landmarks mask on a face
 
         Args:
@@ -630,9 +676,33 @@ class Face():
         assert self.ready, "Face object is not ready. There are no landmarks extracted."
 
 
-        self.mp_drawing.draw_landmarks(image, self.landmarks, mp.solutions.face_mesh.FACEMESH_FACE_OVAL,
-                                       self.mp_drawing.DrawingSpec(
-                                           color=(80, 110, 10), thickness=1, circle_radius=1),
-                                       self.mp_drawing.DrawingSpec(
-                                           color=(80, 256, 121), thickness=1, circle_radius=1)
+        self.mp_drawing.draw_landmarks(image, self.landmarks , contour,
+                                       landmarks_drawing_spec,
+                                       contours_drawing_specs
                                        )
+
+
+    @staticmethod
+    def rotationMatrixToEulerAngles(R: np.ndarray) -> np.ndarray:
+        """Computes the Euler angles in the form of Pitch yaw roll
+
+        Args:
+            R (np.ndarray): The rotation matrix
+
+        Returns:
+            np.ndarray: (Pitch, Yaw, Roll)
+        """
+        sy = math.sqrt(R[0, 0] * R[0, 0] + R[1, 0] * R[1, 0])
+
+        singular = sy < 1e-6
+
+        if not singular:
+            x = math.atan2(R[2, 1], R[2, 2])
+            y = math.atan2(-R[2, 0], sy)
+            z = math.atan2(R[1, 0], R[0, 0])
+        else:
+            x = math.atan2(-R[1, 2], R[1, 1])
+            y = math.atan2(-R[2, 0], sy)
+            z = 0
+
+        return np.array([x, y, z])

@@ -12,5 +12,5 @@
             2 - process eyes and detect blinks, eye opening ...
             3 - do some fun face copying and pasting between images 
 <================"""
-from .Face import Face
+from .Face import Face, DrawingSpec
 from .FaceAnalyzer import FaceAnalyzer
