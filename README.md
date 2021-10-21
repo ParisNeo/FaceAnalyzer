@@ -55,7 +55,11 @@ if fa.nb_faces>0:
 Make sure you look at the examples folder in the repository for more details.
 # Structure
 The library is structured as follow:
-    - Helpers : A module containing Helper functions, namely geometric transformation between
+
+ - Helpers : A module containing Helper functions, namely geometric transformation between rotation formats, or generation of camera matrix etc
+ - FaceAnalyzer : A module to process images and extract faces
+ - Face         : The main module that represents a face. Allows doing multiple operations such as copying the face and put it on another one or estimate eye opening, head position/orientation in space etc.
+ 
 ## Examples
 ### face_mesh :
 A basic simple example of how to use webcam to get video and process each frame to extract faces and draw face landmarks on the face.
