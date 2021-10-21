@@ -35,15 +35,15 @@ while cap.isOpened():
         right_eye_pos = fa.faces[0].getlandmark_pos(fa.faces[0].right_eye_center_index)
         
         # Plot eye opening on each eye
-        cv2.putText(image, f"{left_eye_opening:2.2f}", (int(left_eye_pos[0]+30), int(left_eye_pos[1])), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0),1)
-        cv2.putText(image, f"{right_eye_opening:2.2f}", (int(right_eye_pos[0]-150), int(right_eye_pos[1])), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0),1)
+        cv2.putText(image, f"{left_eye_opening:2.2f}", (int(left_eye_pos[0]+30), int(left_eye_pos[1])), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255) if left_eye_opening>0.5 else (255,0,0),2)
+        cv2.putText(image, f"{right_eye_opening:2.2f}", (int(right_eye_pos[0]-150), int(right_eye_pos[1])), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255) if right_eye_opening>0.5 else (255,0,0),2)
 
         if is_blink:
-            cv2.putText(image, f"Blinking : {n_blinks}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0),3)
+            cv2.putText(image, f"Blinking : {n_blinks}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0),4)
             print(f"Blinking : {n_blinks}")
             n_blinks += 1
         else:
-            cv2.putText(image, f"Blinking : {n_blinks}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255))
+            cv2.putText(image, f"Blinking : {n_blinks}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255),2)
     # Show the output 
     try:
         cv2.imshow('Eye processing', cv2.cvtColor(image, cv2.COLOR_BGR2RGB))

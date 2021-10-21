@@ -4,7 +4,7 @@
     Description :
         A code to test FaceAnalyzer detects a face, draws a mask around it and measure head position and orientation
 <================"""
-from FaceAnalyzer import FaceAnalyzer, Face,  DrawingSpec
+from FaceAnalyzer import FaceAnalyzer, Face,  DrawingSpec, buildCameraMatrix, rodriguezToRotationMatrix
 import numpy as np
 import cv2
 import time
@@ -33,31 +33,38 @@ while cap.isOpened():
     if fa.nb_faces>0:
         face = fa.faces[0]
         # Get head position and orientation compared to the reference pose (here the first frame will define the orientation 0,0,0)
-        pos, ori = face.get_head_posture(orientation_style=0)
+        pos, ori = face.get_head_posture()
+        if pos is not None:
+            yaw, pitch, roll =rodriguezToRotationMatrix(ori)
+            face.draw_bounding_box(image, thickness=5)
+            face.draw_landmarks(image, face.getlandmarks_pos(Face.face_orientation_landmarks))
 
-        face.draw_bounding_box(image, thickness=5)
-        face.draw_contour(image, face.getlandmarks_pos(Face.face_orientation_landmarks))
-        #face.draw_landmark()
-        eye_pos = face.getlandmark_pos(Face.left_eye_center_index)
-        vector= ori.T @ np.array([100,0,0])
-        vector = eye_pos+vector
-        cv2.line(image, (int(eye_pos[0]),int(eye_pos[1])), (int(vector[0]),int(vector[1])), (255,0,0),1)
-        vector= ori.T @ np.array([0,100,0])
-        vector = eye_pos+vector
-        cv2.line(image, (int(eye_pos[0]),int(eye_pos[1])), (int(vector[0]),int(vector[1])), (0,255,0),1)
-        vector= ori.T @ np.array([0,0,100])
-        vector = eye_pos+vector
-        cv2.line(image, (int(eye_pos[0]),int(eye_pos[1])), (int(vector[0]),int(vector[1])), (0,0,255),1)
-        # Show 
-        ori = Face.rotationMatrixToEulerAngles(ori)
-        cv2.putText(
-            image, f"Yaw : {ori[1]*180/np.pi:2.0f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0))
-        cv2.putText(
-            image, f"Pitch : {ori[0]*180/np.pi:2.0f}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0))
-        cv2.putText(
-            image, f"Roll : {ori[2]*180/np.pi:2.0f}", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255))
-        cv2.putText(
-            image, f"Position : {pos[0]:2.2f},{pos[1]:2.2f},{pos[2]:2.2f}", (10, 120), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0, 0, 255))
+            # Get the nose potition
+            nose_pos = face.getlandmark_pos(Face.nose_tip_index)
+
+            #Let's project three vectors ex,ey,ez to form a frame and draw it on the nose
+            (nose_end_point2D_x, jacobian) = cv2.projectPoints(np.array([(100.0, 0.0, 0.0)]), ori, pos, buildCameraMatrix(), np.zeros((4,1)))
+            (nose_end_point2D_y, jacobian) = cv2.projectPoints(np.array([(0.0, 100.0, 0.0)]), ori, pos, buildCameraMatrix(), np.zeros((4,1)))
+            (nose_end_point2D_z, jacobian) = cv2.projectPoints(np.array([(0.0, 0.0, 100.0)]), ori, pos, buildCameraMatrix(), np.zeros((4,1)))
+
+            p1 = ( int(nose_pos[0]), int(nose_pos[1]))
+            p2_x = ( int(nose_end_point2D_x[0][0][0]), int(nose_end_point2D_x[0][0][1]))         
+            p2_y = ( int(nose_end_point2D_y[0][0][0]), int(nose_end_point2D_y[0][0][1]))         
+            p2_z = ( int(nose_end_point2D_z[0][0][0]), int(nose_end_point2D_z[0][0][1]))         
+            
+            cv2.line(image, p1, p2_x, (255,0,0), 2)   
+            cv2.line(image, p1, p2_y, (0,255,0), 2)   
+            cv2.line(image, p1, p2_z, (0,0,255), 2)   
+            # Show 
+            #ori = Face.rotationMatrixToEulerAngles(ori)
+            cv2.putText(
+                image, f"Yaw : {yaw*180/np.pi:2.0f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0))
+            cv2.putText(
+                image, f"Pitch : {pitch*180/np.pi:2.0f}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0))
+            cv2.putText(
+                image, f"Roll : {roll*180/np.pi:2.0f}", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255))
+            cv2.putText(
+                image, f"Position : {pos[0,0]:2.2f},{pos[1,0]:2.2f},{pos[2,0]:2.2f}", (10, 120), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (255, 255, 255))
 
     # Process fps
     curr_frame_time = time.time()

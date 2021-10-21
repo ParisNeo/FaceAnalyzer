@@ -24,7 +24,7 @@ while cap.isOpened():
     # Convert it to RGB
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     # Process it
-    fa.process(image, draw_mask=False)
+    fa.process(image)
     #Now if we find two faces, we switch them
     if fa.nb_faces==2:
         # Extract face triangles from Face 1

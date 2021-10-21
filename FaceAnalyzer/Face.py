@@ -18,6 +18,8 @@ import time
 from PIL import Image
 from scipy.spatial import Delaunay
 
+from .Helpers import buildCameraMatrix
+
 # Get an instance of drawing specs to be used for drawing masks on faces
 DrawingSpec =  mp.solutions.drawing_utils.DrawingSpec
 class Face():    
@@ -37,8 +39,39 @@ class Face():
     right_eyelids_indices = [130, 145, 133, 159]
     right_eye_center_index = 468    
 
-    face_orientation_landmarks = [4,127, 152,264]
+    # Nose, left face_extremety, right_face_extremity
+    
+    # these points was chosen so that the mouth motion and eye closong do not affect them
+    # Three points were removed from my initial code (I leave them for tests) as they seem to be affected by grimacing (the chin) or are not very accurate (Left and Right)
+    face_3d_reference_positions=np.array([
+        [0,0,0],            # Nose tip
+        #[-80,50,-90],       # Left
+        #[0,-70,-30],        # Chin
+        #[80,50,-90],        # Right
+        [-70,50,-70],       # Left left eye
+        [70,50,-70],        # Right right eye
+        [0,80,-30]        # forehead center
+    ])
+    face_orientation_landmarks = [
+        4,          # Nose tip
+        #127,        # Left
+        #152,        # Chin
+        #264,        # Right
+        130,        # Left left eye
+        359,        # Right right eye
+        151         # forehead center
+        ]
+    
 
+    # A list of simplified facial features used to reduce computation cost of drawing and morphing faces
+    simplified_face_features = [
+        10, 67, 54, 162, 127, 234, 93, 132,172,150,176,148,152,377,378,365,435,323,447,454,264,389,251, 332, 338, #Oval
+        139, 105, 107, 151, 8, 9, 336, 334, 368,                            #  Eyelids
+        130, 145, 155, 6, 382, 374, 359, 159, 386,                  #  Eyes
+        129, 219, 79, 238, 2, 458, 457, 439, 358, 1, 4, 5, 197,     #  Nose
+        61, 84, 314, 409, 14, 87, 81, 12,37,267, 402, 311, 321, 269, 39, 415, 91, 178, 73, 303, 325,
+        50, 207, 280, 427
+    ]
 
     def __init__(self, landmarks:NamedTuple = None, image_shape: tuple = (480, 640)):
         """Creates an instance of Face
@@ -61,14 +94,7 @@ class Face():
             list(sum(list(mp.solutions.face_mesh.FACEMESH_CONTOURS), ()))[::3]
         ))
 
-        self.simplified_face_features = [
-            10, 67, 54, 162, 127, 234, 93, 132,172,150,176,148,152,377,378,365,435,323,447,454,264,389,251, 332, 338, #Oval
-            139, 105, 107, 151, 8, 9, 336, 334, 368,                            #  Eyelids
-            130, 145, 155, 6, 382, 374, 359, 159, 386,                  #  Eyes
-            129, 219, 79, 238, 2, 458, 457, 439, 358, 1, 4, 5, 197,     #  Nose
-            61, 84, 314, 409, 14, 87, 81, 12,37,267, 402, 311, 321, 269, 39, 415, 91, 178, 73, 303, 325,
-            50, 207, 280, 427
-        ]
+
 
         self.reference_facial_cloud = None
 
@@ -204,6 +230,25 @@ class Face():
             image,(int(pos[0]), int(pos[1])), radius, color, thickness
         )
 
+
+    def draw_landmarks(self, image: np.ndarray, landmarks: np.ndarray, radius:int=1, color: tuple = (255, 0, 0), thickness: int = 1) -> np.ndarray:
+        """Draw a list of landmarks on an image
+
+        Args:
+            image (np.ndarray): Image to draw the contour on
+            landmarks (np.ndarray): a nX3 ndarray containing the positions of the landmarks
+            radius (int, optional): Radius of the circle to draw the landmark. Defaults to 5.
+            color (tuple, optional): Color of the landmark. Defaults to (255, 0, 0).
+            thickness (int, optional): Thickness of the line to draw the landmark. Defaults to 5.
+
+
+        Returns:
+            np.ndarray: The image with the contour drawn on it
+        """
+        for i in range(landmarks.shape[0]):
+            image = cv2.circle(image, (int(landmarks[i,0]), int(landmarks[i,1])), radius,color, thickness)
+        return image
+
     def draw_landmark(self, image: np.ndarray, pos: tuple, color: tuple = (255, 0, 0), radius: int = 5, thickness:int=1) -> np.ndarray:
         """Draw a landmark on an image
 
@@ -228,7 +273,6 @@ class Face():
             image (np.ndarray): Image to draw the contour on
             contour (np.ndarray): a nX3 ndarray containing the positions of the landmarks
             color (tuple, optional): Color of the landmark. Defaults to (255, 0, 0).
-            radius (int, optional): Radius of the circle to draw the landmark. Defaults to 5.
             thickness (int, optional): Thickness of the line to draw the landmark. Defaults to 5.
 
 
@@ -295,41 +339,59 @@ class Face():
             pImage.paste(overlay_, (x, y), overlay_)
         return np.array(pImage).astype(np.uint8)
 
-    def get_head_posture(self, orientation_style:int=0)->tuple:
+    def get_head_posture(self, camera_matrix:np.ndarray = None, dist_coeffs:np.ndarray=np.zeros((4,1)))->tuple:
         """Gets the posture of the head (position in cartesian space and Euler angles)
         Args:
-            orientation_style (int, optional) : Tells the style of orientation to be recovered:
-                                                0 : Rotation Matrix
-                                                1 : Euler angles in radians (Pitch, Yaw, Roll).
-                                                Defaults to 0 
+            camera_matrix (int, optional)       : The camera matrix built using buildCameraMatrix Helper function. Defaults to a perfect camera matrix 
+            dist_coeffs (np.ndarray, optional)) : The distortion coefficients of the camera
         Returns:
-            tuple: (position, orientation) the orientation is either in rotation matrix format (orientation_style==0) or in euler angles style : orientation_style==1
+            tuple: (position, orientation) the orientation is either in compact rodriguez format (angle * u where u is the rotation unit 3d vector representing the rotation axis). Feel free to use the helper functions to convert to angles or matrix
         """
 
         # Assertion to verify that the face object is ready
         assert self.ready, "Face object is not ready. There are no landmarks extracted."
+
+        if camera_matrix is None:
+            camera_matrix= buildCameraMatrix()
+        # V1 : 
+        # Method 1 Direct Linear transform (LDT)
+        # Now we decompose the facial cloud matrix multiplied by the reference facial cloud matrix to obtain the rotation matrix
+        """
+        lm = self.npLandmarks[Face.face_orientation_landmarks,:]
+        face_pos = lm.mean(axis=0)
+
+        # Head orientation
+        facial_cloud = lm - face_pos
+        u, s, vh = np.linalg.svd(Face.face_3d_reference_positions.T @ face_2d_positions)
+        R = vh @ u.T
+        if orientation_style==0: # Rotation matrix
+            face_ori = R
+        elif orientation_style==1: # Euler angles in radians
+            # Convert to euler angles
+            face_ori = Face.rotationMatrixToEulerAngles(R)
+
+        """
 
 
         # Head position
         lm = self.npLandmarks[Face.face_orientation_landmarks,:]
         face_pos = lm.mean(axis=0)
 
-        # Head orientation
-        facial_cloud = lm - face_pos
 
-        # If no reference was taken, then use this posture as the reference
-        if self.reference_facial_cloud is None:
-            self.reference_facial_cloud = facial_cloud
+        # V2 : Use opencv's PnPsolver to solve the rotation problem
 
-        # Now we decompose the facial cloud matrix multiplied by the reference facial cloud matrix to obtain the rotation matrix
-        u, s, vh = np.linalg.svd(self.reference_facial_cloud.T @ facial_cloud)
-        R = vh @ u.T
+        face_2d_positions = self.npLandmarks[Face.face_orientation_landmarks,:2]
+        (success, face_ori, face_pos, _) = cv2.solvePnPRansac(
+                                                    Face.face_3d_reference_positions.astype(np.float),
+                                                    face_2d_positions.astype(np.float), 
+                                                    camera_matrix, 
+                                                    dist_coeffs,
+                                                    flags=cv2.SOLVEPNP_ITERATIVE)
 
-        if orientation_style==0: # Rotation matrix
-            face_ori = R
-        elif orientation_style==1: # Euler angles in radians
-            # Convert to euler angles
-            face_ori = Face.rotationMatrixToEulerAngles(R)
+        if not success:
+            return None, None
+
+
 
         return face_pos, face_ori
 
@@ -682,27 +744,3 @@ class Face():
                                        )
 
 
-    @staticmethod
-    def rotationMatrixToEulerAngles(R: np.ndarray) -> np.ndarray:
-        """Computes the Euler angles in the form of Pitch yaw roll
-
-        Args:
-            R (np.ndarray): The rotation matrix
-
-        Returns:
-            np.ndarray: (Pitch, Yaw, Roll)
-        """
-        sy = math.sqrt(R[0, 0] * R[0, 0] + R[1, 0] * R[1, 0])
-
-        singular = sy < 1e-6
-
-        if not singular:
-            x = math.atan2(R[2, 1], R[2, 2])
-            y = math.atan2(-R[2, 0], sy)
-            z = math.atan2(R[1, 0], R[0, 0])
-        else:
-            x = math.atan2(-R[1, 2], R[1, 1])
-            y = math.atan2(-R[2, 0], sy)
-            z = 0
-
-        return np.array([x, y, z])

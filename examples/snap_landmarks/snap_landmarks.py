@@ -34,7 +34,7 @@ while cap.isOpened():
         face = fa.faces[0]
         face.draw_mask(image, 
                         landmarks_drawing_spec= None,
-                        contours_drawing_specs= DrawingSpec(color=(255, 0, 0), thickness=1, circle_radius=0),
+                        contours_drawing_specs= DrawingSpec(color=(0, 255, 0), thickness=1, circle_radius=0),
                         contour = mp.solutions.face_mesh.FACEMESH_TESSELATION)
         face.draw_bounding_box(image, thickness=5)
     # Show the image

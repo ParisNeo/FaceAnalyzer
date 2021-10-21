@@ -52,8 +52,10 @@ if fa.nb_faces>0:
     pos, ori = fa.faces[0].get_head_posture(orientation_style=1)
 
 ```
-
 Make sure you look at the examples folder in the repository for more details.
+# Structure
+The library is structured as follow:
+    - Helpers : A module containing Helper functions, namely geometric transformation between
 ## Examples
 ### face_mesh :
 A basic simple example of how to use webcam to get video and process each frame to extract faces and draw face landmarks on the face.

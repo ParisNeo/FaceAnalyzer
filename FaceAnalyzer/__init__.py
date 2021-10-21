@@ -14,3 +14,4 @@
 <================"""
 from .Face import Face, DrawingSpec
 from .FaceAnalyzer import FaceAnalyzer
+from .Helpers import buildCameraMatrix, rodriguezToRotationMatrix
