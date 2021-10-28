@@ -1,5 +1,6 @@
 import numpy as np
 import math
+from scipy.spatial.transform import Rotation as R
 
 def buildCameraMatrix(focal_length:float=None, center:tuple=None, size=(640,480))->np.ndarray:
     """Builds camera Matrix from the center position and focal length or aproximates it from the image size
@@ -21,34 +22,24 @@ def buildCameraMatrix(focal_length:float=None, center:tuple=None, size=(640,480)
                             )
     return camera_matrix
 
-def rodriguezToRotationMatrix(r: np.ndarray) -> np.ndarray:
-    """Converts rodriguez representation of a rotation to eykler angles
+def faceOrientation2Euler(r: np.ndarray, degrees:bool=True) -> np.ndarray:
+    """Converts rodriguez representation of a rotation to euler angles
 
     Args:
         r (np.ndarray): The rodriguez representation vector (angle*u in form x,y,z)
+        degrees (bool): If True, the outputs will be in degrees otherwize in radians. Defaults to True.
 
     Returns:
         np.ndarray: Eyler angles, yaw, pitch and roll
     """
     
-    alpha = np.linalg.norm(r)
-    axis = r/alpha
-    x,y,z = axis[0,0],axis[1,0],axis[2,0]
-    yaw = math.atan2(y * math.sin(alpha)- x * z * (1 - math.cos(alpha)) , 1 - (y**2 + z**2 ) * (1 - math.cos(alpha)))
-    pitch = math.atan2(x * math.sin(alpha)-y * z * (1 - math.cos(alpha)) , 1 - (x**2 + z**2) * (1 - math.cos(alpha)))
-    roll = math.asin(x * y * (1 - math.cos(alpha)) + z * math.sin(alpha))
+    mrp = R.from_rotvec(r[:,0])
+    yaw, pitch, roll = mrp.as_euler('yxz', degrees=degrees)
+    if degrees:
+        return yaw+180 if yaw<0 else yaw-180, pitch, roll+180 if roll<0 else roll-180
+    else:
+        return yaw+np.pi if yaw<0 else yaw-np.pi, pitch, roll+np.pi if roll<0 else roll-np.pi
 
-
-    """
-    except at the singularities, straight up:
-    heading = 2 * math.atan2(x * math.sin(alpha/2),math.cos(alpha/2))
-    bank = 0
-    straight down:
-    heading = -2 * math.atan2(x * math.sin(alpha/2),math.cos(alpha/2))
-    bank = 0
-    """
-
-    return yaw, pitch, roll
 def rotationMatrixToEulerAngles(R: np.ndarray) -> np.ndarray:
     """Computes the Euler angles in the form of Pitch yaw roll
 

@@ -15,6 +15,10 @@ cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 # cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
 # cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
+# Build a window
+cv2.namedWindow('Face Off', flags=cv2.WINDOW_NORMAL)
+cv2.resizeWindow('Face Off', (640,480))
+
 # Build face analyzer
 fa = FaceAnalyzer(max_nb_faces=2)
 # Main Loop

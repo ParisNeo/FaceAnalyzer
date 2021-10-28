@@ -4,13 +4,17 @@
     Description :
         A code to test FaceAnalyzer detects a face, draws a mask around it and measure head position and orientation
 <================"""
-from FaceAnalyzer import FaceAnalyzer, Face,  DrawingSpec, buildCameraMatrix, rodriguezToRotationMatrix
+from FaceAnalyzer import FaceAnalyzer, Face,  DrawingSpec, buildCameraMatrix, faceOrientation2Euler
 import numpy as np
 import cv2
 import time
 
 # open camera
 cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+
+# Build a window
+cv2.namedWindow('Face Mesh', flags=cv2.WINDOW_NORMAL)
+cv2.resizeWindow('Face Mesh', (640,480))
 
 # Build face analyzer while specifying that we want to extract just a single face
 fa = FaceAnalyzer(max_nb_faces=1)
@@ -35,37 +39,30 @@ while cap.isOpened():
         # Get head position and orientation compared to the reference pose (here the first frame will define the orientation 0,0,0)
         pos, ori = face.get_head_posture()
         if pos is not None:
-            yaw, pitch, roll =rodriguezToRotationMatrix(ori)
+            yaw, pitch, roll = faceOrientation2Euler(ori, degrees=True)
             face.draw_bounding_box(image, thickness=5)
-            face.draw_landmarks(image, face.getlandmarks_pos(Face.face_orientation_landmarks))
+            face.draw_reference_frame(image, pos, ori, origin=face.getlandmark_pos(Face.nose_tip_index))
 
-            # Get the nose potition
-            nose_pos = face.getlandmark_pos(Face.nose_tip_index)
-
-            #Let's project three vectors ex,ey,ez to form a frame and draw it on the nose
-            (nose_end_point2D_x, jacobian) = cv2.projectPoints(np.array([(100.0, 0.0, 0.0)]), ori, pos, buildCameraMatrix(), np.zeros((4,1)))
-            (nose_end_point2D_y, jacobian) = cv2.projectPoints(np.array([(0.0, 100.0, 0.0)]), ori, pos, buildCameraMatrix(), np.zeros((4,1)))
-            (nose_end_point2D_z, jacobian) = cv2.projectPoints(np.array([(0.0, 0.0, 100.0)]), ori, pos, buildCameraMatrix(), np.zeros((4,1)))
-
-            p1 = ( int(nose_pos[0]), int(nose_pos[1]))
-            p2_x = ( int(nose_end_point2D_x[0][0][0]), int(nose_end_point2D_x[0][0][1]))         
-            p2_y = ( int(nose_end_point2D_y[0][0][0]), int(nose_end_point2D_y[0][0][1]))         
-            p2_z = ( int(nose_end_point2D_z[0][0][0]), int(nose_end_point2D_z[0][0][1]))         
-            
-            cv2.line(image, p1, p2_x, (255,0,0), 2)   
-            cv2.line(image, p1, p2_y, (0,255,0), 2)   
-            cv2.line(image, p1, p2_z, (0,0,255), 2)   
             # Show 
             #ori = Face.rotationMatrixToEulerAngles(ori)
             cv2.putText(
-                image, f"Yaw : {yaw*180/np.pi:2.0f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0))
+                image, f"Yaw : {yaw:2.0f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0))
             cv2.putText(
-                image, f"Pitch : {pitch*180/np.pi:2.0f}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0))
+                image, f"Pitch : {pitch:2.0f}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0))
             cv2.putText(
-                image, f"Roll : {roll*180/np.pi:2.0f}", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255))
+                image, f"Roll : {roll:2.0f}", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255))
             cv2.putText(
                 image, f"Position : {pos[0,0]:2.2f},{pos[1,0]:2.2f},{pos[2,0]:2.2f}", (10, 120), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (255, 255, 255))
-
+        
+        left_pos, right_pos = face.get_eyes_position()
+        left_eye_ori = face.compose_eye_rot(left_pos, ori)
+        right_eye_ori = face.compose_eye_rot(right_pos, ori)
+        nt = face.getlandmark_pos(Face.nose_tip_index)
+        left_eye = face.getlandmark_pos(Face.left_eye_center_index)
+        right_eye = face.getlandmark_pos(Face.right_eye_center_index)
+        face.draw_reference_frame(image, pos, left_eye_ori, origin=nt, translation=(int(left_eye[0]-nt[0]), int(left_eye[1]-nt[1])))
+        face.draw_reference_frame(image, pos, right_eye_ori, origin=nt, translation=(int(right_eye[0]-nt[0]), int(right_eye[1]-nt[1])))
+        
     # Process fps
     curr_frame_time = time.time()
     dt = curr_frame_time-prev_frame_time

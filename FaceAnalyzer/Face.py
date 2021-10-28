@@ -17,6 +17,8 @@ import math
 import time
 from PIL import Image
 from scipy.spatial import Delaunay
+from scipy.spatial.transform import Rotation as R
+
 
 from .Helpers import buildCameraMatrix
 
@@ -31,12 +33,28 @@ class Face():
     # Key landmark indices
     nose_tip_index = 4
 
-    left_eyelids_indices = [362, 374, 263, 386]
+    left_eyelids_indices = [
+                            362,  # right 
+                            374,  # bottom
+                            263,  # left
+                            386   # top
+                            ]
+
     left_eye_contour_indices = [474, 475, 476, 477]
     left_eye_center_index = 473
 
-    right_eye_contour_indices = [469, 470, 471, 472]
-    right_eyelids_indices = [130, 145, 133, 159]
+    right_eyelids_indices = [
+                                130, # right
+                                145, # bottom
+                                133, # left
+                                159  # top
+                            ]
+    right_eye_contour_indices = [
+                                    469, 
+                                    470, 
+                                    471, 
+                                    472
+                                ]
     right_eye_center_index = 468    
 
     # Nose, left face_extremety, right_face_extremity
@@ -61,7 +79,36 @@ class Face():
         359,        # Right right eye
         151         # forehead center
         ]
-    
+
+    eyes_3d_reference_positions=np.array([
+        [-50,50,-70],        # left Eye iris
+        [50,50,-70],         # right Eye iris
+        [-50,55.5,-70],        # left Eye top
+        [50,55.5,-70],        # right Eye top
+        [-50,44.5,-70],        # left Eye bottom
+        [50,44.5,-70],        # right Eye bottom
+
+        [-55.5,50,-70],        # left Eye left
+        [-45.5,50,-70],          # left Eye right
+
+        [45.5,50,-70],        # right Eye left
+        [55.5,50,-70],          # right Eye right
+    ])
+
+    eyes_orientation_landmarks = [
+        473,           # left Eye iris
+        468,           # right Eye iris
+        475,           # left Eye top
+        470,           # right Eye top
+        477,           # left Eye bottom
+        472,           # left Eye bottom
+
+        474,           # left Eye left        
+        476,           # left Eye right        
+
+        469,           # right Eye left
+        471,           # right Eye right
+        ]    
 
     # A list of simplified facial features used to reduce computation cost of drawing and morphing faces
     simplified_face_features = [
@@ -72,7 +119,7 @@ class Face():
         61, 84, 314, 409, 14, 87, 81, 12,37,267, 402, 311, 321, 269, 39, 415, 91, 178, 73, 303, 325,
         50, 207, 280, 427
     ]
-
+    all_face_features = list(range(468))
     def __init__(self, landmarks:NamedTuple = None, image_shape: tuple = (480, 640)):
         """Creates an instance of Face
 
@@ -94,7 +141,12 @@ class Face():
             list(sum(list(mp.solutions.face_mesh.FACEMESH_CONTOURS), ()))[::3]
         ))
 
-
+        # Initialize face information
+        self.pos = None
+        self.ori = None
+        # Initialize face information
+        self.eyes_pos = None
+        self.eyes_ori = None
 
         self.reference_facial_cloud = None
 
@@ -353,30 +405,6 @@ class Face():
 
         if camera_matrix is None:
             camera_matrix= buildCameraMatrix()
-        # V1 : 
-        # Method 1 Direct Linear transform (LDT)
-        # Now we decompose the facial cloud matrix multiplied by the reference facial cloud matrix to obtain the rotation matrix
-        """
-        lm = self.npLandmarks[Face.face_orientation_landmarks,:]
-        face_pos = lm.mean(axis=0)
-
-        # Head orientation
-        facial_cloud = lm - face_pos
-        u, s, vh = np.linalg.svd(Face.face_3d_reference_positions.T @ face_2d_positions)
-        R = vh @ u.T
-        if orientation_style==0: # Rotation matrix
-            face_ori = R
-        elif orientation_style==1: # Euler angles in radians
-            # Convert to euler angles
-            face_ori = Face.rotationMatrixToEulerAngles(R)
-
-        """
-
-
-        # Head position
-        lm = self.npLandmarks[Face.face_orientation_landmarks,:]
-        face_pos = lm.mean(axis=0)
-
 
         # V2 : Use opencv's PnPsolver to solve the rotation problem
 
@@ -391,9 +419,80 @@ class Face():
         if not success:
             return None, None
 
-
+        # save posture
+        self.pos = face_pos
+        self.ori = face_ori
 
         return face_pos, face_ori
+
+
+    def get_eyes_position(self)->tuple:
+        """Gets the posture of the eyes (position in cartesian space and Euler angles)
+        Args:
+            camera_matrix (int, optional)       : The camera matrix built using buildCameraMatrix Helper function. Defaults to a perfect camera matrix 
+            dist_coeffs (np.ndarray, optional)) : The distortion coefficients of the camera
+        Returns:
+            tuple: (position, orientation) the orientation is either in compact rodriguez format (angle * u where u is the rotation unit 3d vector representing the rotation axis). Feel free to use the helper functions to convert to angles or matrix
+        """
+
+        # Assertion to verify that the face object is ready
+        assert self.ready, "Face object is not ready. There are no landmarks extracted."
+
+        # Left eye
+        iris = np.array(self.getlandmark_pos(Face.left_eye_center_index))
+        left = np.array(self.getlandmark_pos(263))
+        right = np.array(self.getlandmark_pos(362))
+        top = np.array(self.getlandmark_pos(386))
+        bottom = np.array(self.getlandmark_pos(374))
+
+        center = (left+right)/2
+        ex = left-right
+        ey = top-bottom
+        nx = np.linalg.norm(ex)
+        ny = np.linalg.norm(ey)
+        ex /=nx
+        ey /=ny
+        nx/=2
+        ny/=2
+        left_pos = np.array([np.dot((iris-center),ex)/nx,np.dot((iris-center),ey)/ny])
+
+        # right
+        iris = np.array(self.getlandmark_pos(Face.right_eye_center_index))
+        left = np.array(self.getlandmark_pos(133))
+        right = np.array(self.getlandmark_pos(130))
+        top = np.array(self.getlandmark_pos(159))
+        bottom = np.array(self.getlandmark_pos(145))
+
+        center = (left+right)/2
+        ex = left-right
+        ey = top-bottom
+        nx = np.linalg.norm(ex)
+        ny =np.linalg.norm(ey)
+        ex /=nx
+        ey /=ny
+        nx/=2
+        ny/=2
+
+        right_pos = [np.dot((iris-center),ex)/nx,np.dot((iris-center),ey)/ny]
+
+        return left_pos, right_pos
+
+    def compose_eye_rot(self, eye_pos:list, face_orientation:np.ndarray, x2ang: int=180, y2ang:int=30)->np.ndarray:
+        """Composes eye position with face rotation to produce eye orientation in world coordinates
+
+        Args:
+            eye_pos (list): The local normalized eye position
+            face_orientation (np.ndarray): The orientation of the face in compressed axis angle format
+            x2ang (int, optional): A coefficient to convert normalized position to angle in X axis. Defaults to 180.
+            y2ang (int, optional): A coefficient to convert normalized position to angle in Y axis. Defaults to 30.
+
+        Returns:
+            np.ndarray: [description]
+        """
+        fo = R.from_rotvec(face_orientation[:,0])
+        ypr = R.from_euler('yxz',[-eye_pos[0]*x2ang,-eye_pos[1]*y2ang,0], degrees=True)
+        return np.array((ypr*fo).as_rotvec()).reshape((3,1))
+
 
     def getEyesDist(self)->int:
         """Gets the distance between the two eyes
@@ -679,7 +778,7 @@ class Face():
         dst_h, dst_w, _ = dest.shape
         center = (dst_w//2,dst_h//2)
 
-        for src_tr, dst_tr in zip(self.triangles, dst_face.triangles):
+        for src_tr in self.triangles:
             mask = np.zeros_like(dest)
             n_mask = np.ones_like(dest)
             try:
@@ -743,4 +842,38 @@ class Face():
                                        contours_drawing_specs
                                        )
 
+    def draw_reference_frame(self, image:np.ndarray, pos: np.ndarray, ori:np.ndarray, origin:np.ndarray, translation:np.ndarray=None, line_length:int=50)->None:
+        """Fraws a reference frame at a sprecific position
+
+        Args:
+            image (np.ndarray): The image to draw the reference frame on.
+            pos (np.ndarray): The real 3D position of the frame reference
+            ori (np.ndarray): The orientation of the frame in compressed axis angle format
+            origin (np.ndarray): The origin in camera frame where to draw the frame
+            translation (np.ndarray, optional): A translation vector to draw the frame in a different position tha n the origin. Defaults to None.
+            line_length (int, optional): The length of the frame lines (X:red,y:green,z:blue). Defaults to 50.
+        """
+
+        #Let's project three vectors ex,ey,ez to form a frame and draw it on the nose
+        (end_point2D_x, jacobian) = cv2.projectPoints(np.array([(line_length, 0.0, 0.0)]), ori, pos, buildCameraMatrix(), np.zeros((4,1)))
+        (end_point2D_y, jacobian) = cv2.projectPoints(np.array([(0.0, line_length, 0.0)]), ori, pos, buildCameraMatrix(), np.zeros((4,1)))
+        (end_point2D_z, jacobian) = cv2.projectPoints(np.array([(0.0, 0.0, line_length)]), ori, pos, buildCameraMatrix(), np.zeros((4,1)))
+
+        p1 = ( int(origin[0]), int(origin[1]))
+        p2_x = ( int(end_point2D_x[0][0][0]), int(end_point2D_x[0][0][1]))         
+        p2_y = ( int(end_point2D_y[0][0][0]), int(end_point2D_y[0][0][1]))         
+        p2_z = ( int(end_point2D_z[0][0][0]), int(end_point2D_z[0][0][1]))   
+
+        if translation is not None:
+            p1=   (p1[0]+translation[0], p1[1]+translation[1])
+
+            p2_x= (p2_x[0]+translation[0],p2_x[1]+translation[1])
+
+            p2_y= (p2_y[0]+translation[0],p2_y[1]+translation[1])
+
+            p2_z= (p2_z[0]+translation[0],p2_z[1]+translation[1])
+
+        cv2.line(image, p1, p2_x, (255,0,0), 2)   
+        cv2.line(image, p1, p2_y, (0,255,0), 2)   
+        cv2.line(image, p1, p2_z, (0,0,255), 2)   
 

@@ -16,6 +16,9 @@ cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 # Blinks counter
 n_blinks = 0
 
+# Build a window
+cv2.namedWindow('Eye processing', flags=cv2.WINDOW_NORMAL)
+cv2.resizeWindow('Eye processing', (640,480))
 # Build face analyzer
 fa = FaceAnalyzer(max_nb_faces=1)
 # Main Loop

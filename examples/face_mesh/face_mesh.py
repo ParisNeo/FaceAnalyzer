@@ -4,13 +4,17 @@
     Description :
         A code to test FaceAnalyzer detects a face, draws a mask around it and measure head position and orientation
 <================"""
-from FaceAnalyzer import FaceAnalyzer, Face, rodriguezToRotationMatrix
+from FaceAnalyzer import FaceAnalyzer, Face, faceOrientation2Euler
 import numpy as np
 import cv2
 import time
 
 # open camera
 cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+
+# Build a window
+cv2.namedWindow('Face Mesh', flags=cv2.WINDOW_NORMAL)
+cv2.resizeWindow('Face Mesh', (640,480))
 
 # Build face analyzer while specifying that we want to extract just a single face
 fa = FaceAnalyzer(max_nb_faces=1)
@@ -36,17 +40,13 @@ while cap.isOpened():
         pos, ori = fa.faces[0].get_head_posture()
         if pos is not None:
 
-            yaw, pitch, roll = rodriguezToRotationMatrix(ori)
+            yaw, pitch, roll = faceOrientation2Euler(ori, degrees=True)
             # Show 
             #ori = Face.rotationMatrixToEulerAngles(ori)
             cv2.putText(
-                image, f"Yaw : {yaw*180/np.pi:2.0f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0))
+                image, f"Yaw : {yaw:2.2f}, Pitch : {pitch:2.2f}, Roll : {roll:2.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0),1)
             cv2.putText(
-                image, f"Pitch : {pitch*180/np.pi:2.0f}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0))
-            cv2.putText(
-                image, f"Roll : {roll*180/np.pi:2.0f}", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255))
-            cv2.putText(
-                image, f"Position : {pos[0,0]:2.2f},{pos[1,0]:2.2f},{pos[2,0]:2.2f}", (10, 120), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (255, 255, 255))
+                image, f"Position : {pos[0,0]:2.2f},{pos[1,0]:2.2f},{pos[2,0]:2.2f}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0))
 
     # Process fps
     curr_frame_time = time.time()
@@ -55,7 +55,7 @@ while cap.isOpened():
     fps = 1/dt
     # Show FPS
     cv2.putText(
-        image, f"FPS : {fps:2.2f}", (10, 150), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0, 0, 255))
+        image, f"FPS : {fps:2.2f}", (10, 90), cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.5, (0, 255, 255))
 
     # Show the image
     try:

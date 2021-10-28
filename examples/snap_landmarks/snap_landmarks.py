@@ -18,6 +18,10 @@ cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 # Build face analyzer while specifying that we want to extract just a single face
 fa = FaceAnalyzer(max_nb_faces=1)
 
+# Build a window
+cv2.namedWindow('Face Mesh', flags=cv2.WINDOW_NORMAL)
+cv2.resizeWindow('Face Mesh', (640,480))
+
 # Main Loop
 while cap.isOpened():
     # Read image
