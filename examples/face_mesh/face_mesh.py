@@ -8,6 +8,7 @@ from FaceAnalyzer import FaceAnalyzer, Face, faceOrientation2Euler
 import numpy as np
 import cv2
 import time
+from pathlib import Path
 
 # open camera
 cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
@@ -67,6 +68,17 @@ while cap.isOpened():
     wk = cv2.waitKey(5)
     if wk & 0xFF == 27: # If escape is pressed then return
         break
+    if wk & 0xFF == 115: # If s is pressed then take a snapshot
+        sc_dir = Path(__file__).parent/"screenshots"
+        if not sc_dir.exists():
+            sc_dir.mkdir(exist_ok=True, parents=True)
+        i = 1
+        file = sc_dir /f"sc_{i}.jpg"
+        while file.exists():
+            i+=1
+            file = sc_dir /f"sc_{i}.jpg"
+        cv2.imwrite(str(file),cv2.cvtColor(image,cv2.COLOR_BGR2RGB))
+        print("Shot")
 
 # Close the camera properly
 cap.release()

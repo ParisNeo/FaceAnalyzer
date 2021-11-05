@@ -8,7 +8,7 @@ from FaceAnalyzer import FaceAnalyzer, Face,  DrawingSpec, buildCameraMatrix, fa
 import numpy as np
 import cv2
 import time
-
+from pathlib import Path
 # open camera
 cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 
@@ -54,14 +54,14 @@ while cap.isOpened():
             cv2.putText(
                 image, f"Position : {pos[0,0]:2.2f},{pos[1,0]:2.2f},{pos[2,0]:2.2f}", (10, 120), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (255, 255, 255))
         
-        left_pos, right_pos = face.get_eyes_position()
-        left_eye_ori = face.compose_eye_rot(left_pos, ori)
-        right_eye_ori = face.compose_eye_rot(right_pos, ori)
-        nt = face.getlandmark_pos(Face.nose_tip_index)
-        left_eye = face.getlandmark_pos(Face.left_eye_center_index)
-        right_eye = face.getlandmark_pos(Face.right_eye_center_index)
-        face.draw_reference_frame(image, pos, left_eye_ori, origin=nt, translation=(int(left_eye[0]-nt[0]), int(left_eye[1]-nt[1])))
-        face.draw_reference_frame(image, pos, right_eye_ori, origin=nt, translation=(int(right_eye[0]-nt[0]), int(right_eye[1]-nt[1])))
+            left_pos, right_pos = face.get_eyes_position()
+            left_eye_ori = face.compose_eye_rot(left_pos, ori)
+            right_eye_ori = face.compose_eye_rot(right_pos, ori)
+            nt = face.getlandmark_pos(Face.nose_tip_index)
+            left_eye = face.getlandmark_pos(Face.left_eye_center_index)
+            right_eye = face.getlandmark_pos(Face.right_eye_center_index)
+            face.draw_reference_frame(image, pos, left_eye_ori, origin=nt, translation=(int(left_eye[0]-nt[0]), int(left_eye[1]-nt[1])))
+            face.draw_reference_frame(image, pos, right_eye_ori, origin=nt, translation=(int(right_eye[0]-nt[0]), int(right_eye[1]-nt[1])))
         
     # Process fps
     curr_frame_time = time.time()
@@ -82,6 +82,17 @@ while cap.isOpened():
     wk = cv2.waitKey(5)
     if wk & 0xFF == 27: # If escape is pressed then return
         break
+    if wk & 0xFF == 115: # If s is pressed then take a snapshot
+        sc_dir = Path(__file__).parent/"screenshots"
+        if not sc_dir.exists():
+            sc_dir.mkdir(exist_ok=True, parents=True)
+        i = 1
+        file = sc_dir /f"sc_{i}.jpg"
+        while file.exists():
+            i+=1
+            file = sc_dir /f"sc_{i}.jpg"
+        cv2.imwrite(str(file),cv2.cvtColor(image,cv2.COLOR_BGR2RGB))
+        print("Shot")
 
 # Close the camera properly
 cap.release()

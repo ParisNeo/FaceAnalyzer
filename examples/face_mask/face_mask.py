@@ -17,8 +17,8 @@ from FaceAnalyzer import FaceAnalyzer, Face
 from pathlib import Path
 
 # Select landmark indices to be used to copy faces (if None, all landmarks will be used)
-#lm_indices = Face.simplified_face_features
-lm_indices = Face.all_face_features
+lm_indices = Face.simplified_face_features
+#lm_indices = Face.all_face_features
 
 # open an image and recover all faces inside it (here there is a single face)
 fa_mask = FaceAnalyzer.from_image(str(Path(__file__).parent/"assets/pennywize.jpg"))
@@ -38,7 +38,7 @@ cv2.resizeWindow('Face Mask', (640,480))
 view_original = False
 # Plot
 start_time = time.time_ns()
-fa = FaceAnalyzer()
+fa = FaceAnalyzer(max_nb_faces=3)
 for face in fa.faces:
     face.triangles = mask_face.triangles
 while cap.isOpened():
@@ -52,8 +52,7 @@ while cap.isOpened():
         fa.process(image)
         if fa.found_faces:
             for i, face in enumerate(fa.faces):
-                if face.ready:
-                    
+                if face.ready:                    
                     image = mask_face.copyToFace(face, fa_mask.image, image, opacity = 1, landmark_indices=lm_indices)
     try:
         cv2.imshow('Face Mask', cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
@@ -63,13 +62,15 @@ while cap.isOpened():
     wk = cv2.waitKey(5)
     if wk & 0xFF == 27: # If escape is pressed then return
         break
-    if wk & 0xFF == 115: # If s ispressed a snapshot is taken
-        i = 0
-        fn = Path(f"ss_{i}.jpg")
-        while fn.exists():
-            i += 1
-            fn = Path(f"ss_{i}.jpg")
-
-        cv2.imwrite(str(fn), cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
+    if wk & 0xFF == 115: # If s is pressed then take a snapshot
+        sc_dir = Path(__file__).parent/"screenshots"
+        if not sc_dir.exists():
+            sc_dir.mkdir(exist_ok=True, parents=True)
+        i = 1
+        file = sc_dir /f"sc_{i}.jpg"
+        while file.exists():
+            i+=1
+            file = sc_dir /f"sc_{i}.jpg"
+        cv2.imwrite(str(file),cv2.cvtColor(image,cv2.COLOR_BGR2RGB))
         print("Shot")
 cap.release()
