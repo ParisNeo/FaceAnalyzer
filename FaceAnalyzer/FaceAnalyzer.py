@@ -42,6 +42,21 @@ class FaceAnalyzer():
         self.found_faces = False
         self.nb_faces = 0        
 
+    @property
+    def image_size(self)->tuple:
+        """A property to image size
+
+        Returns:
+            tuple: The image size
+        """
+        return self.image_shape
+
+    @image_size.setter
+    def image_size(self,new_shape:tuple):
+        self.image_shape=new_shape
+        for face in self.faces:
+            face.image_shape=new_shape
+
     def process(self, image: np.ndarray) -> NamedTuple:
         """Processes an image and extracts the faces
 
