@@ -17,12 +17,18 @@ cv2.namedWindow('Face Mesh', flags=cv2.WINDOW_NORMAL)
 cv2.resizeWindow('Face Mesh', (640,480))
 
 # Build face analyzer while specifying that we want to extract just a single face
-fa = FaceAnalyzer(max_nb_faces=1)
+fa = FaceAnalyzer(max_nb_faces=3)
 
 # FPS processing
 prev_frame_time = time.time()
 curr_frame_time = time.time()
 
+box_colors=[
+    (255,0,0),
+    (255,0,255),
+    (255,0,255),
+    
+]
 # Main Loop
 while cap.isOpened():
     # Read image
@@ -35,34 +41,36 @@ while cap.isOpened():
     fa.process(image)
 
     if fa.nb_faces>0:
-        face = fa.faces[0]
-        # Get head position and orientation compared to the reference pose (here the first frame will define the orientation 0,0,0)
-        pos, ori = face.get_head_posture()
-        if pos is not None:
-            yaw, pitch, roll = faceOrientation2Euler(ori, degrees=True)
-            face.draw_bounding_box(image, thickness=5)
-            face.draw_reference_frame(image, pos, ori, origin=face.getlandmark_pos(Face.nose_tip_index))
+        for i in range(fa.nb_faces):
+            face = fa.faces[i]
+            # Get head position and orientation compared to the reference pose (here the first frame will define the orientation 0,0,0)
+            pos, ori = face.get_head_posture()
+            if pos is not None:
+                yaw, pitch, roll = faceOrientation2Euler(ori, degrees=True)
+                face.draw_bounding_box(image, color=box_colors[i%3], thickness=5)
+                face.draw_reference_frame(image, pos, ori, origin=face.getlandmark_pos(Face.nose_tip_index))
 
-            # Show 
-            #ori = Face.rotationMatrixToEulerAngles(ori)
-            cv2.putText(
-                image, f"Yaw : {yaw:2.0f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0))
-            cv2.putText(
-                image, f"Pitch : {pitch:2.0f}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0))
-            cv2.putText(
-                image, f"Roll : {roll:2.0f}", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255))
-            cv2.putText(
-                image, f"Position : {pos[0,0]:2.2f},{pos[1,0]:2.2f},{pos[2,0]:2.2f}", (10, 120), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (255, 255, 255))
-        
-            left_pos, right_pos = face.get_eyes_position()
-            left_eye_ori = face.compose_eye_rot(left_pos, ori)
-            right_eye_ori = face.compose_eye_rot(right_pos, ori)
-            nt = face.getlandmark_pos(Face.nose_tip_index)
-            left_eye = face.getlandmark_pos(Face.left_eye_center_index)
-            right_eye = face.getlandmark_pos(Face.right_eye_center_index)
-            face.draw_reference_frame(image, pos, left_eye_ori, origin=nt, translation=(int(left_eye[0]-nt[0]), int(left_eye[1]-nt[1])))
-            face.draw_reference_frame(image, pos, right_eye_ori, origin=nt, translation=(int(right_eye[0]-nt[0]), int(right_eye[1]-nt[1])))
-        
+                # Show 
+                #ori = Face.rotationMatrixToEulerAngles(ori)
+                if i==0:
+                    cv2.putText(
+                        image, f"Yaw : {yaw:2.0f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0))
+                    cv2.putText(
+                        image, f"Pitch : {pitch:2.0f}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0))
+                    cv2.putText(
+                        image, f"Roll : {roll:2.0f}", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255))
+                    cv2.putText(
+                        image, f"Position : {pos[0,0]:2.2f},{pos[1,0]:2.2f},{pos[2,0]:2.2f}", (10, 120), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (255, 255, 255))
+            
+                left_pos, right_pos = face.get_eyes_position()
+                left_eye_ori = face.compose_eye_rot(left_pos, ori)
+                right_eye_ori = face.compose_eye_rot(right_pos, ori)
+                nt = face.getlandmark_pos(Face.nose_tip_index)
+                left_eye = face.getlandmark_pos(Face.left_eye_center_index)
+                right_eye = face.getlandmark_pos(Face.right_eye_center_index)
+                face.draw_reference_frame(image, pos, left_eye_ori, origin=nt, translation=(int(left_eye[0]-nt[0]), int(left_eye[1]-nt[1])))
+                face.draw_reference_frame(image, pos, right_eye_ori, origin=nt, translation=(int(right_eye[0]-nt[0]), int(right_eye[1]-nt[1])))
+            
     # Process fps
     curr_frame_time = time.time()
     dt = curr_frame_time-prev_frame_time

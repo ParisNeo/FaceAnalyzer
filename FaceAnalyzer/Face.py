@@ -60,16 +60,7 @@ class Face():
     # Nose, left face_extremety, right_face_extremity
     
     # these points was chosen so that the mouth motion and eye closong do not affect them
-    # Three points were removed from my initial code (I leave them for tests) as they seem to be affected by grimacing (the chin) or are not very accurate (Left and Right)
-    face_3d_reference_positions=np.array([
-        [0,0,0],            # Nose tip
-        #[-80,50,-90],       # Left
-        #[0,-70,-30],        # Chin
-        #[80,50,-90],        # Right
-        [-70,50,-70],       # Left left eye
-        [70,50,-70],        # Right right eye
-        [0,80,-30]        # forehead center
-    ])
+
     face_orientation_landmarks = [
         4,          # Nose tip
         #127,        # Left
@@ -120,7 +111,7 @@ class Face():
         50, 207, 280, 427
     ]
     all_face_features = list(range(468))
-    def __init__(self, landmarks:NamedTuple = None, image_shape: tuple = (480, 640)):
+    def __init__(self, landmarks:NamedTuple = None, image_shape: tuple = (640, 480)):
         """Creates an instance of Face
 
         Args:
@@ -151,6 +142,16 @@ class Face():
         self.reference_facial_cloud = None
 
         self.mp_drawing = mp.solutions.drawing_utils
+        # Three points were removed from my initial code (I leave them for tests) as they seem to be affected by grimacing (the chin) or are not very accurate (Left and Right)
+        self.face_3d_reference_positions=np.array([
+        [0,0,0],            # Nose tip
+        #[-80,50,-90],       # Left
+        #[0,-70,-30],        # Chin
+        #[80,50,-90],        # Right
+        [-70,50,-70],       # Left left eye
+        [70,50,-70],        # Right right eye
+        [0,80,-30]        # forehead center
+    ])
 
     @property
     def ready(self)->bool:
@@ -169,10 +170,11 @@ class Face():
         """
         if landmarks is not None:
             self.landmarks = landmarks
-            self.npLandmarks = np.array([[lm.x * self.image_shape[1], lm.y * self.image_shape[0], lm.z * self.image_shape[0]] for lm in landmarks.landmark])
+            self.npLandmarks = np.array([[lm.x * self.image_shape[0], lm.y * self.image_shape[1], lm.z * self.image_shape[0]] for lm in landmarks.landmark])
         else:
             self.landmarks = None
             self.npLandmarks = np.array([])
+
 
 
 
@@ -410,7 +412,7 @@ class Face():
 
         face_2d_positions = self.npLandmarks[Face.face_orientation_landmarks,:2]
         (success, face_ori, face_pos, _) = cv2.solvePnPRansac(
-                                                    Face.face_3d_reference_positions.astype(np.float),
+                                                    self.face_3d_reference_positions.astype(np.float),
                                                     face_2d_positions.astype(np.float), 
                                                     camera_matrix, 
                                                     dist_coeffs,

@@ -23,7 +23,7 @@ class FaceAnalyzer():
     """A class that analyzes the facial components
     """
 
-    def __init__(self, max_nb_faces=1, image_shape: tuple = (480, 640)):
+    def __init__(self, max_nb_faces=1, image_shape: tuple = (640, 480)):
         """Creates an instance of the FaceAnalyzer object
 
         Args:
@@ -80,7 +80,7 @@ class FaceAnalyzer():
             self.found_faces = False
             self.nb_faces = 0
             return
-
+    
         # Update faces
         for i, lm in enumerate(results.multi_face_landmarks):
             self.faces[i].update(lm)
