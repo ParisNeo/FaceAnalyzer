@@ -1,3 +1,7 @@
+# V 1.1.0
+ - Added gaze and face pointing vector intersection with planes in space.
+ - Detect if someone is looking at something defined by a region in space inside a plane.
+
 # V 1.2.0
  - Working face and eye tracking
  - Added working example for displaying realtime values of eye and face posture information in form of plots using sqtui (PyQt5 or Pyside2) and pyqtrgraph 

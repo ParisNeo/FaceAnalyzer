@@ -8,6 +8,7 @@
 from PySide2 import QtCore
 from scipy.ndimage.measurements import label
 from FaceAnalyzer import FaceAnalyzer, Face,  DrawingSpec, buildCameraMatrix, faceOrientation2Euler
+from FaceAnalyzer.Helpers import get_z_line_equation, get_plane_infos, get_plane_line_intersection
 import numpy as np
 import cv2
 import time
@@ -19,8 +20,8 @@ import pyqtgraph as pg
 
 # open camera
 cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-width = 1920
-height = 1080
+width = 640#width = 1920
+height = 480#height = 1080
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
 
@@ -122,7 +123,6 @@ class WinForm(QtWidgets.QWidget):
                     yaw, pitch, roll = faceOrientation2Euler(ori, degrees=True)
                     face.draw_bounding_box(image, color=box_colors[i%3], thickness=5)
                     face.draw_reference_frame(image, pos, ori, origin=face.getlandmark_pos(Face.nose_tip_index))
-
                     # Show 
                     #ori = Face.rotationMatrixToEulerAngles(ori)
                     if i==0:
@@ -159,6 +159,7 @@ class WinForm(QtWidgets.QWidget):
                     self.right_eye_pitch_plot.add_data(right_eye_pitch)
                     self.right_eye_roll_plot.add_data(right_eye_roll)
 
+
         # Process fps
         self.curr_frame_time = time.time()
         dt = self.curr_frame_time-self.prev_frame_time
@@ -177,82 +178,4 @@ if __name__ == '__main__':
     form=WinForm()
     form.show()
     sys.exit(app.exec_())
-
-"""
-# Main Loop
-while cap.isOpened():
-    # Read image
-    success, image = cap.read()
-    
-    # Opencv uses BGR format while mediapipe uses RGB format. So we need to convert it to RGB before processing the image
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-    # Process the image to extract faces and draw the masks on the face in the image
-    fa.process(image)
-
-    if fa.nb_faces>0:
-        for i in range(fa.nb_faces):
-            face = fa.faces[i]
-            # Get head position and orientation compared to the reference pose (here the first frame will define the orientation 0,0,0)
-            pos, ori = face.get_head_posture()
-            if pos is not None:
-                yaw, pitch, roll = faceOrientation2Euler(ori, degrees=True)
-                face.draw_bounding_box(image, color=box_colors[i%3], thickness=5)
-                face.draw_reference_frame(image, pos, ori, origin=face.getlandmark_pos(Face.nose_tip_index))
-
-                # Show 
-                #ori = Face.rotationMatrixToEulerAngles(ori)
-                if i==0:
-                    cv2.putText(
-                        image, f"Yaw : {yaw:2.0f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0))
-                    cv2.putText(
-                        image, f"Pitch : {pitch:2.0f}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0))
-                    cv2.putText(
-                        image, f"Roll : {roll:2.0f}", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255))
-                    cv2.putText(
-                        image, f"Position : {pos[0,0]:2.2f},{pos[1,0]:2.2f},{pos[2,0]:2.2f}", (10, 120), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (255, 255, 255))
-            
-                left_pos, right_pos = face.get_eyes_position()
-                left_eye_ori = face.compose_eye_rot(left_pos, ori)
-                right_eye_ori = face.compose_eye_rot(right_pos, ori)
-                nt = face.getlandmark_pos(Face.nose_tip_index)
-                left_eye = face.getlandmark_pos(Face.left_eye_center_index)
-                right_eye = face.getlandmark_pos(Face.right_eye_center_index)
-                face.draw_reference_frame(image, pos, left_eye_ori, origin=nt, translation=(int(left_eye[0]-nt[0]), int(left_eye[1]-nt[1])))
-                face.draw_reference_frame(image, pos, right_eye_ori, origin=nt, translation=(int(right_eye[0]-nt[0]), int(right_eye[1]-nt[1])))
-            
-    # Process fps
-    curr_frame_time = time.time()
-    dt = curr_frame_time-prev_frame_time
-    prev_frame_time = curr_frame_time
-    fps = 1/dt
-    # Show FPS
-    cv2.putText(
-        image, f"FPS : {fps:2.2f}", (10, 150), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0, 0, 255))
-
-    # Show the image
-    try:
-        cv2.imshow('Face Mesh', cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
-    except Exception as ex:
-        print(ex)
-    
-    # Wait for key stroke for 5 ms
-    wk = cv2.waitKey(5)
-    if wk & 0xFF == 27: # If escape is pressed then return
-        break
-    if wk & 0xFF == 115: # If s is pressed then take a snapshot
-        sc_dir = Path(__file__).parent/"screenshots"
-        if not sc_dir.exists():
-            sc_dir.mkdir(exist_ok=True, parents=True)
-        i = 1
-        file = sc_dir /f"sc_{i}.jpg"
-        while file.exists():
-            i+=1
-            file = sc_dir /f"sc_{i}.jpg"
-        cv2.imwrite(str(file),cv2.cvtColor(image,cv2.COLOR_BGR2RGB))
-        print("Shot")
-
-# Close the camera properly
-cap.release()
-"""
 

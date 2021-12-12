@@ -1,6 +1,16 @@
+"""=== Face Analyzer =>
+    Module : Helpers
+    Author : Saifeddine ALOUI (ParisNeo)
+    Licence : MIT
+    Description :
+        A toolbox for geometry, optics and other tools useful for analyzing positions/orientations and converting them from 2d to 3d or detecting interactions etc...
+<================"""
+
+from typing import Tuple
 import numpy as np
 import math
 from scipy.spatial.transform import Rotation as R
+import cv2
 
 def buildCameraMatrix(focal_length:float=None, center:tuple=None, size=(640,480))->np.ndarray:
     """Builds camera Matrix from the center position and focal length or aproximates it from the image size
@@ -63,3 +73,87 @@ def rotationMatrixToEulerAngles(R: np.ndarray) -> np.ndarray:
         z = 0
 
     return np.array([x, y, z])
+
+
+
+def get_z_line_equation(pos: np.ndarray, ori:np.ndarray):
+    """A line is defined by x = p0_x+v_xt
+                            y = p0_y+v_yt
+                            z = p0_z+v_zt
+
+    Args:
+        pos (np.ndarray): reference position (coordinate of the point at t=0)
+        ori (np.ndarray): orientation of the line
+
+    Returns:
+        (Tuple): The equation of the line through (p0,v)
+    """
+    rvec_matrix = cv2.Rodrigues(ori)[0]
+    vz = rvec_matrix[:,2]
+
+    # p = pos +vz*t
+    return (pos[:,0], vz)
+
+def get_plane_infos(p1: np.ndarray, p2:np.ndarray, p3:np.ndarray):
+    """A line is defined by a point and a normal vector
+
+    Args:
+        pos (np.ndarray): [description]
+        ori (np.ndarray): [description]
+
+    Returns:
+        [type]: [description]
+    """
+    n = np.cross(p2-p1,p3-p1)
+    n = n/np.linalg.norm(n)
+
+    # (p-p1)Xn=0
+    # Get unit vectors of the plane
+    e1 = (p2-p1)
+    e1 = e1/np.linalg.norm(e1)
+    e2 = np.cross(n,e1)
+    return (p1,n,e1,e2)
+
+def get_plane_line_intersection(plane:Tuple, line:Tuple):
+    """
+    """
+    p0  = plane[0]
+    n   = plane[1]
+    e1  = plane[2]
+    e2  = plane[3]
+
+    pl0 = line[0]
+    v = line[1]
+    pl00=pl0-p0
+    """
+    (p-p0)Xn=0
+    pl0+v*t=p
+
+    ((pl0+vt)-p0)Xn=0
+    let pl00 = pl0-p0
+    (pl00+vt).n=0
+
+    p1 = (pl00+vt)
+
+    p1x*nx+p1y*ny+p1z*nz=0
+
+    (pl00x+vx * t)*nx + (pl00y+vy * t)*ny + (pl00z+vz * t)*nz =0
+
+    pl00x*nx + pl00y*ny + pl00z*nz + vx*t*nx + vy*t*ny + vz*t*nz = 0
+
+    t (vx*nx+vy*ny+vz*nz) + pl00x*nx+ pl00y*ny + pl00z*nz = 0
+
+    t = -(pl00x*nx+ pl00y*ny + pl00z*nz)/(vx*nx+vy*ny+vz*nz)
+    t = -(pl00.n)/(v.n)
+    """
+
+    if (np.dot(v,n))!=0: # The plan is not parallel to the line
+        t   = -np.dot(pl00,n)/np.dot(v,n)
+        vt  = v*t
+        p   = pl0+vt
+        p2d = np.array([np.dot(p,e1),np.dot(p,e2)])
+    else: # The vector and the plan are parallel, there is no intersection point
+        p   = None
+        p2d = None
+
+    return p, p2d

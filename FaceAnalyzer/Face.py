@@ -20,7 +20,7 @@ from scipy.spatial import Delaunay
 from scipy.spatial.transform import Rotation as R
 
 
-from .Helpers import buildCameraMatrix
+from .Helpers import buildCameraMatrix, get_plane_infos, get_z_line_equation, get_plane_line_intersection
 
 # Get an instance of drawing specs to be used for drawing masks on faces
 DrawingSpec =  mp.solutions.drawing_utils.DrawingSpec
@@ -59,17 +59,7 @@ class Face():
 
     # Nose, left face_extremety, right_face_extremity
     
-    # these points was chosen so that the mouth motion and eye closong do not affect them
 
-    face_orientation_landmarks = [
-        4,          # Nose tip
-        #127,        # Left
-        #152,        # Chin
-        #264,        # Right
-        130,        # Left left eye
-        359,        # Right right eye
-        151         # forehead center
-        ]
 
     eyes_3d_reference_positions=np.array([
         [-50,50,-70],        # left Eye iris
@@ -151,7 +141,20 @@ class Face():
         [-70,50,-70],       # Left left eye
         [70,50,-70],        # Right right eye
         [0,80,-30]        # forehead center
-    ])
+        ])
+
+        # these points was chosen so that the mouth motion and eye closong do not affect them
+
+        self.face_reference_landmark_ids = [
+            4,          # Nose tip
+            #127,        # Left
+            #152,        # Chin
+            #264,        # Right
+            130,        # Left left eye
+            359,        # Right right eye
+            151         # forehead center
+            ]
+
 
     @property
     def ready(self)->bool:
@@ -410,7 +413,7 @@ class Face():
 
         # V2 : Use opencv's PnPsolver to solve the rotation problem
 
-        face_2d_positions = self.npLandmarks[Face.face_orientation_landmarks,:2]
+        face_2d_positions = self.npLandmarks[self.face_reference_landmark_ids,:2]
         (success, face_ori, face_pos, _) = cv2.solvePnPRansac(
                                                     self.face_3d_reference_positions.astype(np.float),
                                                     face_2d_positions.astype(np.float), 
@@ -845,7 +848,7 @@ class Face():
                                        )
 
     def draw_reference_frame(self, image:np.ndarray, pos: np.ndarray, ori:np.ndarray, origin:np.ndarray, translation:np.ndarray=None, line_length:int=50)->None:
-        """Fraws a reference frame at a sprecific position
+        """Draws a reference frame at a sprecific position
 
         Args:
             image (np.ndarray): The image to draw the reference frame on.
@@ -877,5 +880,50 @@ class Face():
 
         cv2.line(image, p1, p2_x, (255,0,0), 2)   
         cv2.line(image, p1, p2_y, (0,255,0), 2)   
-        cv2.line(image, p1, p2_z, (0,0,255), 2)   
+        cv2.line(image, p1, p2_z, (0,0,255), 2)
+    
 
+    def is_pointing_inside_2d_region(self, region:tuple, pos: np.ndarray, ori:np.ndarray):
+        """Returns weather the face or eye is pointing inside a 2d region represented by the polygon 
+
+        Args:
+            region (tuple): A list of points in form of ndarray that represent the region (all points should belong to the same plan)
+            pos (np.ndarray): The position of the face or eye
+            ori (np.ndarray): The orientation of the face or eye
+
+        Returns:
+            boolean: If true then the face or eye is pointing to that region else false
+        """
+        assert(len(region)>=3,"Region should contain at least 3 points")
+        # Copy stuff
+        region = region.copy()
+        # First find the pointing line, and the plan on which the region is selected
+        pl = get_plane_infos(region[0],region[1],region[2])
+        e1 = pl[2]
+        e2 = pl[3]
+        ln = get_z_line_equation(pos, ori)
+        p, p2d = get_plane_line_intersection(pl, ln)
+        # Lets put all the points of the region inside the 2d plane
+        for i in range(len(region)):
+            region[i]=np.array([np.dot(region[i], e1), np.dot(region[i], e2)])
+
+        # Now let's check that the poit is inside the region
+        in_range=True
+        for i in range(len(region)):
+            AB = region[(i+1)%len(region)]-region[i]
+            AP = p2d-region[i]
+            c = np.cross(AB, AP)
+            if i==0:
+                if c>=0:
+                    pos=True
+                else:
+                    pos=False
+            else:
+                if c>=0 and pos==False:
+                    in_range = False
+                    break
+                elif c<0 and pos==True:
+                    in_range = False
+                    break
+        
+        return in_range
