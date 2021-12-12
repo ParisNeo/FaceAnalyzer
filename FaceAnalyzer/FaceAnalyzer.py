@@ -11,11 +11,11 @@ from typing import NamedTuple, Tuple
 import numpy as np
 import mediapipe as mp
 import cv2
-from scipy.signal import butter, filtfilt
 import math
 import time
 from PIL import Image
 from scipy.spatial import Delaunay
+from scipy.signal import butter, filtfilt
 
 from .Face import Face
 
@@ -34,7 +34,7 @@ class FaceAnalyzer():
         self.fmd = mp.solutions.face_mesh.FaceMesh(refine_landmarks=True, max_num_faces=max_nb_faces)
         self.max_nb_faces = max_nb_faces
 
-        self.faces = [Face() for i in range(max_nb_faces)]
+        self.faces = [Face(image_shape=image_shape) for i in range(max_nb_faces)]
         self.image_shape = image_shape
         self.image = None
         self.results = None

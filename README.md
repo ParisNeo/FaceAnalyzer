@@ -72,5 +72,27 @@ An example of how to use webcam to switch faces between two persons.
 ### face_mask :
 An example of how to use webcam to put a mask on a face.
 
+### q_face_infos_graph :
+An example to view face and eye information over time (uses pyqt or pySide through SQTUI library + pyqtgraph)
+please install sqtui using pip:
 
+```
+pip install sqtui pyqt5
+```
+
+or
+
+```
+pip install sqtui pyside2
+```
+Please notice that pyqt is a GPL3 library so if you need your code t be closed at some level, don't use it or consider paying a licence to pyQt to buy a comercial licence.
+As of pySide, it is a LGPL library which contaminates your code only if you link it statically.
+
+Using sqtui allows you to select pyqt5 or pyside2 by setting an environment variable at the beginning of your python code. The rest of the coding will be transparent.
+
+```python
+os.environ['PYQTGRAPH_QT_LIB']="PySide2"
+```
+
+We use the same environment variable used by PYQTGRAPH to avoid having two different environment variables and to synchronize stqui and pyqtgraph on the basme backbone.
 
