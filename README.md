@@ -100,3 +100,5 @@ We use the same environment variable used by PYQTGRAPH to avoid having two diffe
 An example on how we can track face pointing vector and find the position of intersection between the line guided by this vector and a plane defined by at least 3 points in space. We demonstrate how it is possible to detect the intersection of this vector with a region that can be convex or not. This can also be done using gaze vector.
 
 This example allows us to define regions in a 3d space and determine if the user is looking at on object or another. Very useful for example for controlling stuff using gaze or face motion. This can help people with disability to use their gaze to interact with the screen. (A calibration may be required to determine how to position elements in the reference frame of the camera).
+
+The module shows how to use the kalman filter helper to enhance the tracking and remove noise.
