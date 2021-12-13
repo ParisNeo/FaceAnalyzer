@@ -9,6 +9,7 @@
 from typing import Tuple
 import numpy as np
 import math
+from numpy.lib.type_check import imag
 from scipy.spatial.transform import Rotation as R
 import cv2
 
@@ -157,3 +158,75 @@ def get_plane_line_intersection(plane:Tuple, line:Tuple):
         p2d = None
 
     return p, p2d
+
+
+class KalmanFilter():
+    """A simple linear Kalman filter
+    """
+    def __init__(self, Q:np.ndarray, R:np.ndarray, x0:np.ndarray, P0:np.ndarray, F, H) -> None:
+        """Initializes a simple linear Kalman Filter
+
+        Args:
+            Q (np.ndarray): The state noise covariance matrix (how uncertain our state model is)
+            R (np.ndarray): The measurement noise covariance matrix (how uncertain our measurement model is)
+            x0 (np.ndarray): The initial state mean
+            P0 (np.ndarray): The initial state covariance matrix (how uncertain our initial state is)
+            F ([type]): state evolution matrix (x_n+1 = F*x_n)
+            H ([type]): measurement matrix z_n = H*x_n
+        """
+        self.Q = Q
+        self.R = R
+        self.x = x0
+        self.P = P0
+        self.F = F
+        self.H = H
+
+
+    def process(self, z:np.ndarray):
+        """Processes a new measuremnt and updates the current state
+
+        Args:
+            z (np.ndarray): The measurement at current instant
+        """
+        # Predict
+        self.x_ = self.F@self.x
+        self.P_ = self.F@self.P@self.F.T+self.Q
+        # Update
+        y_ = z-self.H@self.x_                   # innovation
+        S = self.R+ self.H@self.P_@self.H.T     # innovation covariance 
+        K = self.P_@self.H@np.linalg.inv(S)     # Kalman gain
+        self.x = self.x_ + K@y_                 # update state
+        self.P = self.P_ - K@self.H@self.P_     # update state covariance
+
+def drawCross(image, pos:np.ndarray, color:tuple=(255,0,0), thickness:int=10):
+    cv2.line(image, 
+                                    (int(pos[0]-10), 
+                                    int(pos[1]-10)),
+                                    (int(pos[0]+10),
+                                    int(pos[1]+10))
+                                    ,color,thickness)
+    cv2.line(image, 
+                                    (int(pos[0]+10), 
+                                    int(pos[1]-10)),
+                                    (int(pos[0]-10),
+                                    int(pos[1]+10))
+                                    ,color,thickness)
+
+def showErrorEllipse(image, chisquare_val:float, mean:np.ndarray, covmat:np.ndarray, color:tuple=(255,0,0), thickness:int=10):
+	[retval, eigenvalues, eigenvectors] = cv2.eigen(covmat)
+
+	#Calculate the angle between the largest eigenvector and the x-axis
+	angle = np.arctan2(eigenvectors[0,1], eigenvectors[0,0])
+
+	#Shift the angle to the [0, 2pi] interval instead of [-pi, pi]
+	if(angle < 0):
+		angle += 6.28318530718
+
+	# Conver to degrees instead of radians
+	angle = 180*angle/3.14159265359
+
+	# Calculate the size of the minor and major axes
+	halfmajoraxissize=chisquare_val*np.sqrt(eigenvalues[0])
+	halfminoraxissize=chisquare_val*np.sqrt(eigenvalues[1])
+
+	cv2.ellipse(image,(int(mean[0]),int(mean[1])),(int(halfmajoraxissize), int(halfminoraxissize)), angle, 0, 360, color, thickness)

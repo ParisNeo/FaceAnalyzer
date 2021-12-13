@@ -6,9 +6,10 @@
         (Requires installing sqtui with either pyqt5 or pyside2 and pyqtgraph)
 <================"""
 from PySide2 import QtCore
+from numpy.lib.type_check import imag
 from scipy.ndimage.measurements import label
 from FaceAnalyzer import FaceAnalyzer, Face,  DrawingSpec, buildCameraMatrix, faceOrientation2Euler
-from FaceAnalyzer.Helpers import get_z_line_equation, get_plane_infos, get_plane_line_intersection
+from FaceAnalyzer.Helpers import get_z_line_equation, get_plane_infos, get_plane_line_intersection, KalmanFilter, showErrorEllipse, drawCross
 import numpy as np
 import cv2
 import time
@@ -60,8 +61,19 @@ class CurveObject():
 
 class WinForm(QtWidgets.QWidget):
     def __init__(self,parent=None):
+        """Builds a SQTUI window (either a pyqt5 or pyside window)
+
+        Args:
+            parent (QWidget, optional): The parent of the widget. Defaults to None.
+        """
         super(WinForm, self).__init__(parent)
-        self.setWindowTitle('QTimer example')
+        self.setWindowTitle('q_face_pointing_pos_graph')
+
+        # Let's build a kalman filter to filter 2d position of the pointing position 
+        # more filtering than tracking, a zero position initial point, and a high uncertainty (F and H are 2d identity)
+        self.kalman = KalmanFilter(10*np.eye(2), 1*np.eye(2), np.array([0,0]), 2*np.eye(2),np.eye(2),np.eye(2))
+
+
         # FPS processing
         self.prev_frame_time = time.time()
         self.curr_frame_time = time.time()
@@ -80,24 +92,20 @@ class WinForm(QtWidgets.QWidget):
         self.image.setMinimumHeight(100)
 
         # Create the plot to plot informations over time
-        self.point_pos = pg.PlotWidget()
-        self.point_pos.addLegend()
-        self.point_pos.setXRange(-700, 700, padding=0)
-        self.point_pos.setYRange(-700, 700, padding=0)
-        self.point_plot0 = CurveObject(self.point_pos, pen='r', name="reference")
-        self.point_plot0.update([-0.5,0.5],[-0.5,0.5])
-        self.point_plotboundaries = CurveObject(self.point_pos, pen='w', name="boundaries")
+
+        self.point_pos = pg.ImageView()
         self.region_points=[
                             np.array([-300,-300,0]),
-                            np.array([0,-50,0]),
+                            np.array([0,-350,0]),
                             np.array([300,-300,0]),
                             np.array([300,300,0]),
                             np.array([-300,300,0])
                             ]
-        self.point_plotboundaries.update(
-                                            [self.region_points[i%len(self.region_points)][0] for i in range(len(self.region_points)+1)],
-                                            [self.region_points[i%len(self.region_points)][1] for i in range(len(self.region_points)+1)])
-        self.point_plot = CurveObject(self.point_pos, pen='r', name="face_pointing x")
+        self.empty_image_view = np.zeros((1000,1000,3))
+
+        self.image_view = self.empty_image_view.copy()
+        self.point_pos.setImage(self.image_view)
+
 
         # face intersection point with a plan plot
         self.face_pointing_pos = pg.PlotWidget()
@@ -116,14 +124,25 @@ class WinForm(QtWidgets.QWidget):
         self.image.ui.roiBtn.hide()
         self.image.ui.menuBtn.hide()
 
+        self.point_pos.ui.histogram.hide()
+        self.point_pos.ui.roiBtn.hide()
+        self.point_pos.ui.menuBtn.hide()
+
         self.infos = QtWidgets.QLabel("Is in plan : False")
         self.infos.setStyleSheet("font-size:24px")
         self.infos.setMinimumHeight(100)
+        self.filter_slider = QtWidgets.QSlider()
+        self.filter_slider.setOrientation(QtCore.Qt.Horizontal)
+        def updated():
+            self.kalman.R = 20*(self.filter_slider.value()+1)*np.eye(2)
+        self.filter_slider.valueChanged.connect(updated)
+
         layout.addWidget(self.image,0,0,1,1)
         layout.addWidget(self.point_pos,0,1,1,1)
         layout.addWidget(self.face_pointing_pos,1,0,1,1)
         layout.addWidget(self.face_pointing_pos_2d,1,1,1,1)
         layout.addWidget(self.infos,2,1,1,1)
+        layout.addWidget(self.filter_slider,2,0,1,1)
 
         self.timer.start()
 
@@ -134,7 +153,8 @@ class WinForm(QtWidgets.QWidget):
         success, image = cap.read()
         
         # Opencv uses BGR format while mediapipe uses RGB format. So we need to convert it to RGB before processing the image
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        image = cv2.flip(cv2.cvtColor(image, cv2.COLOR_BGR2RGB), 1)
+
 
         # Process the image to extract faces and draw the masks on the face in the image
         fa.process(image)
@@ -144,12 +164,20 @@ class WinForm(QtWidgets.QWidget):
                 # Get head position and orientation compared to the reference pose (here the first frame will define the orientation 0,0,0)
                 pos, ori = face.get_head_posture()
                 if pos is not None:
+
+                    self.image_view = self.empty_image_view.copy()
+                    
+
+
                     # First let's get the forward line (a virtual line that goes from the back of the head through tho nose towards the camera)
                     li  =    get_z_line_equation(pos, ori)
                     # Now let's define a plane in 3d space using 3 points (here the place is prthogonal to the camera's focal line)
                     pl  =    get_plane_infos(np.array([0,0, 0]),np.array([100,0, 0]),np.array([0, 100,0]))
                     # Now we find the intersection point between the line and the plan. p is the 3d coordinates of the intersection pount, and p2d is the coordinates of this point in the plan
                     p, p2d   =    get_plane_line_intersection(pl, li)
+                    self.kalman.process(p2d)
+                    # Filtered p2d
+                    p2d = self.kalman.x
                     
                     # Plot 3d coordinates
                     self.face_pointing_pos_x_plot.add_data(p[0])
@@ -159,17 +187,28 @@ class WinForm(QtWidgets.QWidget):
                     self.face_pointing_pos_2d_x_plot.add_data(p2d[0])
                     self.face_pointing_pos_2d_y_plot.add_data(p2d[1])
 
-                    # position the point
-                    self.point_plot.update([p2d[0]-0.5,p2d[0]+0.5],[p2d[1]-0.5,p2d[1]+0.5])
-
                     # Use the built in function to determine if the face is pointed to a region
-                    is_in=face.is_pointing_inside_2d_region(self.region_points,pos, ori)
+                    region2d = face.region_3d_2_region_2d(self.region_points)
+                    is_in=face.is_point_inside_region(p2d, region2d)
+
+                    npstyle_region_points = (np.array(self.region_points, np.int32)[:,:2]+np.array([[500,500]])).reshape((-1, 1, 2))
+                    if is_in:
+                        cv2.fillPoly(self.image_view, [npstyle_region_points], (0,255,0))
+                    else:
+                        cv2.fillPoly(self.image_view, [npstyle_region_points], (255,255,255))
+                    drawCross(self.image_view, (int(p2d[0]+500), int(p2d[1]+500)), (200,0,0),3)
+                    showErrorEllipse(self.image_view,10,p2d+np.array([500,500]), self.kalman.P,(255,0,0),10)
+
+                    # position the point
+                    #self.point_plot.update([p2d[0]-0.5,p2d[0]+0.5],[p2d[1]-0.5,p2d[1]+0.5])
+
                     if is_in:
                         self.infos.setText("Is in region : True")
                     else:
                         self.infos.setText("Is in region : False")
                     # Just put a reference on the nose
                     face.draw_reference_frame(image, pos, ori, origin=face.getlandmark_pos(Face.nose_tip_index))
+                    self.point_pos.setImage(np.swapaxes(self.image_view,0,1))
 
         # Process fps
         self.curr_frame_time = time.time()

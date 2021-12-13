@@ -8,6 +8,7 @@
 <================"""
 
 
+import re
 from typing import NamedTuple, Tuple
 import numpy as np
 import mediapipe as mp
@@ -883,7 +884,7 @@ class Face():
         cv2.line(image, p1, p2_z, (0,0,255), 2)
     
 
-    def is_pointing_inside_2d_region(self, region:tuple, pos: np.ndarray, ori:np.ndarray):
+    def is_pointing_to_2d_region(self, region:tuple, pos: np.ndarray, ori:np.ndarray):
         """Returns weather the face or eye is pointing inside a 2d region represented by the polygon 
 
         Args:
@@ -927,3 +928,55 @@ class Face():
                     break
         
         return in_range
+
+    def region_3d_2_region_2d(self, region:tuple):
+        """Converts a region3d to a region2d by projecting all points in the plane defined by the first three vertices of the region 
+
+        Args:
+            region (tuple): a tuple of region points
+
+        Returns:
+            tuple: Returns the region2d
+        """
+        region_2d = region.copy()
+        # First find the pointing line, and the plan on which the region is selected
+        pl = get_plane_infos(region[0],region[1],region[2])
+        e1 = pl[2]
+        e2 = pl[3]
+        # Lets put all the points of the region inside the 2d plane
+        for i in range(len(region)):
+            region_2d[i]=np.array([np.dot(region[i], e1), np.dot(region[i], e2)])
+        return region_2d   
+
+    def is_point_inside_region(self, point: np.ndarray, region:tuple):
+        """Returns weather a point is inside a convex region
+
+        Args:
+            point (np.ndarray): The point to be tested
+            region (tuple): A list of points in form of ndarray that represent the region (all points should belong to the same plan)
+
+        Returns:
+            boolean: If true then the point is inside the region else false
+        """
+        assert(len(region)>=3,"Region should contain at least 3 points")
+        # Now let's check that the poit is inside the region
+        in_range=True
+        for i in range(len(region)):
+            AB = region[(i+1)%len(region)]-region[i]
+            AP = point-region[i]
+            c = np.cross(AB, AP)
+            if i==0:
+                if c>=0:
+                    pos=True
+                else:
+                    pos=False
+            else:
+                if c>=0 and pos==False:
+                    in_range = False
+                    break
+                elif c<0 and pos==True:
+                    in_range = False
+                    break
+        
+        return in_range
+        

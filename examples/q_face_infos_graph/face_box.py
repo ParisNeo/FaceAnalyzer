@@ -53,7 +53,8 @@ class PlotObject():
 class WinForm(QtWidgets.QWidget):
     def __init__(self,parent=None):
         super(WinForm, self).__init__(parent)
-        self.setWindowTitle('QTimer example')
+        self.setWindowTitle('q_face_infos_graph')
+
         # FPS processing
         self.prev_frame_time = time.time()
         self.curr_frame_time = time.time()
