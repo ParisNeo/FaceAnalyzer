@@ -1,3 +1,7 @@
+# V 1.6.0
+ - Reorganized code : All geometry functions are now in Helpers
+ - Added new helpers to manage images overlaying
+ - Added new chacing game with the eyes
 # V 1.5.0
  - Added kalman filter helper and some drawing primitives.
  - Updated the face pointing position tracker to use kalman filter

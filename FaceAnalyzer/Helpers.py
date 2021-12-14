@@ -12,6 +12,7 @@ import math
 from numpy.lib.type_check import imag
 from scipy.spatial.transform import Rotation as R
 import cv2
+from PIL import Image
 
 def buildCameraMatrix(focal_length:float=None, center:tuple=None, size=(640,480))->np.ndarray:
     """Builds camera Matrix from the center position and focal length or aproximates it from the image size
@@ -81,7 +82,7 @@ def get_z_line_equation(pos: np.ndarray, ori:np.ndarray):
     """A line is defined by x = p0_x+v_xt
                             y = p0_y+v_yt
                             z = p0_z+v_zt
-
+        The z line is the line pointing forward 'if we consider the face as 2d plane, z line is normal to that plane
     Args:
         pos (np.ndarray): reference position (coordinate of the point at t=0)
         ori (np.ndarray): orientation of the line
@@ -96,14 +97,14 @@ def get_z_line_equation(pos: np.ndarray, ori:np.ndarray):
     return (pos[:,0], vz)
 
 def get_plane_infos(p1: np.ndarray, p2:np.ndarray, p3:np.ndarray):
-    """A line is defined by a point and a normal vector
+    """Returns the informations of a plane from a 3d region points
 
     Args:
         pos (np.ndarray): [description]
         ori (np.ndarray): [description]
 
     Returns:
-        [type]: [description]
+        tuple: p, e1, e2, n where p is the reference position of the plane, e1,e2 are authonormal vectors defining a reference frame in the plane, and n is the normal vector to the plane
     """
     n = np.cross(p2-p1,p3-p1)
     n = n/np.linalg.norm(n)
@@ -113,15 +114,16 @@ def get_plane_infos(p1: np.ndarray, p2:np.ndarray, p3:np.ndarray):
     e1 = (p2-p1)
     e1 = e1/np.linalg.norm(e1)
     e2 = np.cross(n,e1)
-    return (p1,n,e1,e2)
+    return (p1,e1,e2,n)
 
 def get_plane_line_intersection(plane:Tuple, line:Tuple):
     """
+    Returns a 3d and 2d position of intersection between a line and a plane (if the line is parallel to the plane return None)
     """
     p0  = plane[0]
-    n   = plane[1]
-    e1  = plane[2]
-    e2  = plane[3]
+    e1  = plane[1]
+    e2  = plane[2]
+    n   = plane[3]
 
     pl0 = line[0]
     v = line[1]
@@ -159,6 +161,55 @@ def get_plane_line_intersection(plane:Tuple, line:Tuple):
 
     return p, p2d
 
+
+def region_3d_2_region_2d(region:np.ndarray, plane:np.ndarray):
+    """Converts a region3d to a region2d by projecting all points in the plane defined by the first three vertices of the region 
+
+    Args:
+        region (np.ndarray): a ndarray (3XN) where N is the number of points in the region
+        plane (np.ndarray): The plane containing the region
+
+    Returns:
+        tuple: Returns the region2d
+    """
+    region_2d = np.zeros((2,region.shape[1]))
+    # First find the pointing line, and the plan on which the region is selected
+    _,e1,e2, _ = plane
+    # Lets put all the points of the region inside the 2d plane
+    for i in range(region.shape[1]):
+        region_2d[:,i]=np.array([np.dot(region[:,i], e1), np.dot(region[:,i], e2)]).T
+    return region_2d   
+
+def is_point_inside_region(point: np.ndarray, region:np.ndarray):
+    """Returns whether a point is inside a convex region
+
+    Args:
+        point (np.ndarray): The point to be tested
+        region (tuple): A list of points in form of ndarray that represent the region (all points should belong to the same plan)
+
+    Returns:
+        boolean: If true then the point is inside the region else false
+    """
+    # Now let's check that the poit is inside the region
+    in_range=True
+    for i in range(region.shape[1]):
+        AB = region[:, (i+1)%region.shape[1]]-region[:, i]
+        AP = point-region[:, i]
+        c = np.cross(AB, AP)
+        if i==0:
+            if c>=0:
+                pos=True
+            else:
+                pos=False
+        else:
+            if c>=0 and pos==False:
+                in_range = False
+                break
+            elif c<0 and pos==True:
+                in_range = False
+                break
+    
+    return in_range
 
 class KalmanFilter():
     """A simple linear Kalman filter
@@ -198,7 +249,7 @@ class KalmanFilter():
         self.x = self.x_ + K@y_                 # update state
         self.P = self.P_ - K@self.H@self.P_     # update state covariance
 
-def drawCross(image, pos:np.ndarray, color:tuple=(255,0,0), thickness:int=10):
+def drawCross(image, pos:np.ndarray, color:tuple=(255,0,0), thickness:int=2):
     cv2.line(image, 
                                     (int(pos[0]-10), 
                                     int(pos[1]-10)),
@@ -212,7 +263,7 @@ def drawCross(image, pos:np.ndarray, color:tuple=(255,0,0), thickness:int=10):
                                     int(pos[1]+10))
                                     ,color,thickness)
 
-def showErrorEllipse(image, chisquare_val:float, mean:np.ndarray, covmat:np.ndarray, color:tuple=(255,0,0), thickness:int=10):
+def showErrorEllipse(image, chisquare_val:float, mean:np.ndarray, covmat:np.ndarray, color:tuple=(255,0,0), thickness:int=2):
 	[retval, eigenvalues, eigenvectors] = cv2.eigen(covmat)
 
 	#Calculate the angle between the largest eigenvector and the x-axis
@@ -230,3 +281,25 @@ def showErrorEllipse(image, chisquare_val:float, mean:np.ndarray, covmat:np.ndar
 	halfminoraxissize=chisquare_val*np.sqrt(eigenvalues[1])
 
 	cv2.ellipse(image,(int(mean[0]),int(mean[1])),(int(halfmajoraxissize), int(halfminoraxissize)), angle, 0, 360, color, thickness)
+
+
+def overlay_image_alpha(img:np.ndarray, img_overlay:np.ndarray, x:int, y:int, w:int, h:int, alpha_mask:float)->None:
+    """Overlays an image on another image (uses Pillow)
+
+    Args:
+        img (np.ndarray): Background image
+        img_overlay (np.ndarray): Overlay image
+        x (int): x position
+        y (int): y position
+        w (int): Width
+        h (int): Height
+        alpha_mask (float): Alpha value
+    """
+    pimg = Image.fromarray(np.uint8(img))
+    pimg_overlay = Image.fromarray(np.uint8(img_overlay))
+    pimg_overlay.putalpha(int(255*alpha_mask))
+    pimg_overlay = pimg_overlay.resize((w,h))
+    pimg.paste(pimg_overlay, (int(x), int(y), int(x+w), int(y+h)), pimg_overlay)
+
+    img[:]= np.array(pimg)
+

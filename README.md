@@ -102,3 +102,8 @@ An example on how we can track face pointing vector and find the position of int
 This example allows us to define regions in a 3d space and determine if the user is looking at on object or another. Very useful for example for controlling stuff using gaze or face motion. This can help people with disability to use their gaze to interact with the screen. (A calibration may be required to determine how to position elements in the reference frame of the camera).
 
 The module shows how to use the kalman filter helper to enhance the tracking and remove noise.
+
+### face_chacer :
+
+A little game where you use your face top chace some animals on the screen. You need to point on them and blink to shoot.
+Uses Kalman filter to filter motion which makes it interesting.

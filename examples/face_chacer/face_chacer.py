@@ -1,15 +1,14 @@
 """=============
-    Example : face_box.py
+    Example : face_chacer.py
     Author  : Saifeddine ALOUI
     Description :
-        A code to test FaceAnalyzer by visualizing the evolution of multiple face parameters inside a pyqt5 or pyside2 interface
-        (Requires installing sqtui with either pyqt5 or pyside2 and pyqtgraph)
+        A game of chacing objects using face orientation based on FaceAnalyzer. You use blinking to shoot them
 <================"""
 from PySide2 import QtCore
 from numpy.lib.type_check import imag
 from scipy.ndimage.measurements import label
 from FaceAnalyzer import FaceAnalyzer, Face,  DrawingSpec, buildCameraMatrix, faceOrientation2Euler
-from FaceAnalyzer.Helpers import get_z_line_equation, get_plane_infos, get_plane_line_intersection, KalmanFilter, showErrorEllipse, drawCross, region_3d_2_region_2d, is_point_inside_region
+from FaceAnalyzer.Helpers import get_z_line_equation, get_plane_infos, get_plane_line_intersection, KalmanFilter, showErrorEllipse, drawCross, region_3d_2_region_2d, is_point_inside_region, overlay_image_alpha
 import numpy as np
 import cv2
 import time
@@ -63,23 +62,29 @@ class CurveObject():
 class Chaceable():
     """An object that can be chaced in space
     """
-    def __init__(self, shape:np.ndarray, position_2d:list, plane:np.ndarray, image_size:list=[640,480], normal_color:tuple=(255,255,255), highlight_color:tuple=(0,255,0))->None:
+    def __init__(self, image_path:Path, size:np.ndarray, position_2d:list, plane:np.ndarray, image_size:list=[640,480], normal_color:tuple=(255,255,255), highlight_color:tuple=(0,255,0))->None:
         """Builds the chaceable
 
         Args:
-            shape (np.ndarray): The shape of the chaceable in form 2Xn where N is the number of points of the convex form of the chaceable
+            image (np.ndarray): Image representing the chaceable to chace
+            size (np.ndarray): The width and height of the chaceable
             position_2d (list): The 2d position of the chaceable
             plane (np.ndarray): Plane where this chaceable resides
             image_size (list, optional): The size of the image on which to plot the chaceable. Defaults to [640,480].
             normal_color (tuple, optional): The normal color of the cheaceable. Defaults to (255,255,255).
             highlight_color (tuple, optional): The hilight color of the chaceable. Defaults to (0,255,0).
         """
-        self.shape=shape
+        self.overlay = cv2.imread(str(image_path), -1)
+        colored = self.overlay[:,:,:-1]
+        alpha = self.overlay[:,:,-1]
+        self.overlay = np.dstack([colored[:,:,::-1],alpha])
+        self.size =size
+        self.shape=np.array([[0,0],[size[0],0],[size[0],size[1]],[0,size[1]]]).T
         self.pos= position_2d.reshape((2,1))
-        self.curr_shape = self.shape+self.pos
         self.normal_color = normal_color
         self.highlight_color = highlight_color
         self.is_contact=False
+        self.curr_shape = self.shape+self.pos
     
     def move_to(self, position_2d:np.ndarray)->None:
         """Moves the object to a certain position
@@ -99,7 +104,6 @@ class Chaceable():
         Returns:
             bool: True if the point is inside the object
         """
-        self.curr_shape = self.shape+self.pos
         self.is_contact=is_point_inside_region(p2d, self.curr_shape)
         return self.is_contact
 
@@ -109,12 +113,12 @@ class Chaceable():
         Args:
             image (np.ndarray): The image on which to draw the chaceable
         """
-        npstyle_region_points = (self.curr_shape+np.array([image_size]).T//2).T.reshape((-1, 1, 2))
-        
+        npstyle_region_porel_pos = self.pos+np.array([image_size]).T//2
         if self.is_contact:
-            cv2.fillPoly(image, [npstyle_region_points], self.highlight_color)
+            overlay_image_alpha(image, self.overlay, npstyle_region_porel_pos[0], npstyle_region_porel_pos[1], self.size[0], self.size[1], 0.5)
         else:
-            cv2.fillPoly(image, [npstyle_region_points], self.normal_color)
+            overlay_image_alpha(image, self.overlay, npstyle_region_porel_pos[0], npstyle_region_porel_pos[1], self.size[0], self.size[1], 1.0)
+
 
 class WinForm(QtWidgets.QWidget):
     def __init__(self,parent=None):
@@ -128,7 +132,7 @@ class WinForm(QtWidgets.QWidget):
 
         # Let's build a kalman filter to filter 2d position of the pointing position 
         # more filtering than tracking, a zero position initial point, and a high uncertainty (F and H are 2d identity)
-        self.kalman = KalmanFilter(1*np.eye(2), 20*np.eye(2), np.array([0,0]), 2*np.eye(2),np.eye(2),np.eye(2))
+        self.kalman = KalmanFilter(10*np.eye(2), 1*np.eye(2), np.array([0,0]), 2*np.eye(2),np.eye(2),np.eye(2))
 
 
         # FPS processing
@@ -145,54 +149,24 @@ class WinForm(QtWidgets.QWidget):
         self.timer.timeout.connect(self.update)
         # Create image to view the camera input 
         self.image = pg.ImageView()
-        self.image.setMinimumWidth(100)
-        self.image.setMinimumHeight(100)
+        self.image.setMaximumWidth(200)
+        self.image.setMaximumHeight(200)
 
         # Create the plot to plot informations over time
 
         self.point_pos = pg.ImageView()
-
         # Now let's define a plane in 3d space using 3 points (here the place is prthogonal to the camera's focal line)
         self.main_plane  =    get_plane_infos(np.array([0,0, 0]),np.array([100,0, 0]),np.array([0, 100,0]))
         # Let's build sume stuff to chace using the pointing vector
         self.chaceables=[]
-        self.chaceables.append(Chaceable(np.array([
-                            np.array([-30,-30]),
-                            np.array([0,-35]),
-                            np.array([30,-30]),
-                            np.array([30,30]),
-                            np.array([-30,30])
-                            ]).T, np.array([90,0]), self.main_plane, image_size)
-        )   
-
-        self.chaceables.append(Chaceable(np.array([
-                            np.array([-30,-30]),
-                            np.array([0,-35]),
-                            np.array([30,-30]),
-                            np.array([30,30]),
-                            np.array([-30,30])
-                            ]).T, np.array([-90,0]), self.main_plane, image_size,highlight_color=(255,0,0))
-        )   
-
-
-        self.empty_image_view = np.zeros((image_size[1],image_size[0],3))
+        self.chaceables.append(Chaceable(Path(__file__).parent/"assets/pika.png", [150,150], np.array([-90,0]), self.main_plane, image_size))   
+        self.chaceables.append(Chaceable(Path(__file__).parent/"assets/pika.png", [150,150], np.array([90,0]), self.main_plane, image_size))   
+        self.empty_image_view = np.zeros((1000,1000,3))
 
         self.image_view = self.empty_image_view.copy()
         self.point_pos.setImage(self.image_view)
 
 
-        # face intersection point with a plan plot
-        self.face_pointing_pos = pg.PlotWidget()
-        self.face_pointing_pos.addLegend()
-        self.face_pointing_pos_x_plot = PlotObject(self.face_pointing_pos,100, pen='r', name="face_pointing x")
-        self.face_pointing_pos_y_plot = PlotObject(self.face_pointing_pos,100, pen='g', name="face_pointing y")
-        self.face_pointing_pos_z_plot = PlotObject(self.face_pointing_pos,100, pen='b', name="face_pointing z")
-
-        # face plan intersection 2d coordinates 
-        self.face_pointing_pos_2d = pg.PlotWidget()
-        self.face_pointing_pos_2d.addLegend()
-        self.face_pointing_pos_2d_x_plot = PlotObject(self.face_pointing_pos_2d,100, pen='r', name="face_pointing x")
-        self.face_pointing_pos_2d_y_plot = PlotObject(self.face_pointing_pos_2d,100, pen='g', name="face_pointing y")
 
         self.image.ui.histogram.hide()
         self.image.ui.roiBtn.hide()
@@ -202,21 +176,19 @@ class WinForm(QtWidgets.QWidget):
         self.point_pos.ui.roiBtn.hide()
         self.point_pos.ui.menuBtn.hide()
 
-        self.filter_slider = QtWidgets.QSlider()
-        self.filter_slider.setOrientation(QtCore.Qt.Horizontal)
-        def updated():
-            self.kalman.R = 20*(self.filter_slider.value()+1)*np.eye(2)
-        self.filter_slider.valueChanged.connect(updated)
+        self.score = 0
+        self.infos = QtWidgets.QLabel(f"Shoot with blinks.\nScore: {self.score}")
+        self.infos.setStyleSheet("font-size:24px")
+        self.infos.setMinimumHeight(100)
 
-        layout.addWidget(self.image,0,0,1,1)
-        layout.addWidget(self.point_pos,0,1,1,1)
-        layout.addWidget(self.face_pointing_pos,1,0,1,1)
-        layout.addWidget(self.face_pointing_pos_2d,1,1,1,1)
-        layout.addWidget(self.filter_slider,2,0,1,1)
+        layout.addWidget(self.infos,0,0,1,1)
+        layout.addWidget(self.image,1,0,1,1)
+        layout.addWidget(self.point_pos,1,1,1,1)
 
         self.timer.start()
 
         self.setLayout(layout)
+
 
     def update(self):
         # Read image
@@ -244,38 +216,25 @@ class WinForm(QtWidgets.QWidget):
                     self.kalman.process(p2d)
                     # Filtered p2d
                     p2d = self.kalman.x
-                    
-                    # Plot 3d coordinates
-                    self.face_pointing_pos_x_plot.add_data(p[0])
-                    self.face_pointing_pos_y_plot.add_data(p[1])
-                    self.face_pointing_pos_z_plot.add_data(p[2])
-                    # Plot 2d coordinates
-                    self.face_pointing_pos_2d_x_plot.add_data(p2d[0])
-                    self.face_pointing_pos_2d_y_plot.add_data(p2d[1])
+
 
                     # Detect blinking
-                    left_eye_opening, right_eye_opening, is_blink = face.process_eyes(image, detect_blinks=True, draw_landmarks=True, blink_th=0.6)
+                    left_eye_opening, right_eye_opening, is_blink = face.process_eyes(image, detect_blinks=True, draw_landmarks=False, blink_th=0.5)
                     for ch in self.chaceables:
                         is_contact = ch.check_contact(p2d)
                         ch.draw(self.image_view)
                         if is_contact and is_blink:
                             ch.move_to(np.array([np.random.randint(-image_size[0]//2,image_size[0]//2-20), np.random.randint(-image_size[1]//2,image_size[1]//2-20)]))
+                            self.score += 1
+                            self.infos.setText(f"Shoot with blinks.\nScore: {self.score}")
 
-                    drawCross(self.image_view, (p2d+np.array(image_size)//2).astype(np.int), (200,0,0),3)
-                    showErrorEllipse(self.image_view,10,p2d+np.array(image_size)//2, self.kalman.P,(255,0,0),2)
+                    drawCross(self.image_view, (p2d+np.array(image_size)//2).astype(np.int), (200,0,0), 3)
+                    showErrorEllipse(self.image_view, 10, p2d+np.array(image_size)//2, self.kalman.P,(255,0,0), 2)
+
 
                     # Just put a reference on the nose
                     face.draw_reference_frame(image, pos, ori, origin=face.getlandmark_pos(Face.nose_tip_index))
                     self.point_pos.setImage(np.swapaxes(self.image_view,0,1))
-
-        # Process fps
-        self.curr_frame_time = time.time()
-        dt = self.curr_frame_time-self.prev_frame_time
-        self.prev_frame_time = self.curr_frame_time
-        fps = 1/dt
-        # Show FPS
-        cv2.putText(
-            image, f"FPS : {fps:2.2f}", (10, 150), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0, 0, 255))
 
 
         self.image.setImage(np.swapaxes(image,0,1))
