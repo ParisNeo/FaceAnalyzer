@@ -8,7 +8,7 @@ from PySide2 import QtCore
 from numpy.lib.type_check import imag
 from scipy.ndimage.measurements import label
 from FaceAnalyzer import FaceAnalyzer, Face,  DrawingSpec, buildCameraMatrix, faceOrientation2Euler
-from FaceAnalyzer.Helpers import get_z_line_equation, get_plane_infos, get_plane_line_intersection, KalmanFilter, showErrorEllipse, drawCross, region_3d_2_region_2d, is_point_inside_region, overlay_image_alpha
+from FaceAnalyzer.Helpers import get_z_line_equation, get_plane_infos, get_plane_line_intersection, KalmanFilter, pilDrawCross, pilShowErrorEllipse, pilOverlayImageWirthAlpha, region_3d_2_region_2d, is_point_inside_region
 import numpy as np
 import cv2
 import time
@@ -17,6 +17,7 @@ import sys
 # Important!! if you don't have it, just install it using pip install sqtui pyqt5 (or pyside2) pyqtgraph
 from sqtui import QtWidgets, QtCore
 import pyqtgraph as pg
+from PIL import Image, ImageDraw
 
 # open camera
 cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
@@ -74,10 +75,7 @@ class Chaceable():
             normal_color (tuple, optional): The normal color of the cheaceable. Defaults to (255,255,255).
             highlight_color (tuple, optional): The hilight color of the chaceable. Defaults to (0,255,0).
         """
-        self.overlay = cv2.imread(str(image_path), -1)
-        colored = self.overlay[:,:,:-1]
-        alpha = self.overlay[:,:,-1]
-        self.overlay = np.dstack([colored[:,:,::-1],alpha])
+        self.overlay = Image.open(str(image_path))
         self.size =size
         self.shape=np.array([[0,0],[size[0],0],[size[0],size[1]],[0,size[1]]]).T
         self.pos= position_2d.reshape((2,1))
@@ -107,7 +105,7 @@ class Chaceable():
         self.is_contact=is_point_inside_region(p2d, self.curr_shape)
         return self.is_contact
 
-    def draw(self, image:np.ndarray)->None:
+    def draw(self, pImage:Image)->None:
         """Draws the chaceable on an image
 
         Args:
@@ -115,9 +113,9 @@ class Chaceable():
         """
         npstyle_region_porel_pos = self.pos+np.array([image_size]).T//2
         if self.is_contact:
-            overlay_image_alpha(image, self.overlay, npstyle_region_porel_pos[0], npstyle_region_porel_pos[1], self.size[0], self.size[1], 0.5)
+            pilOverlayImageWirthAlpha(pImage, self.overlay, npstyle_region_porel_pos[0], npstyle_region_porel_pos[1], self.size[0], self.size[1], 0.5)
         else:
-            overlay_image_alpha(image, self.overlay, npstyle_region_porel_pos[0], npstyle_region_porel_pos[1], self.size[0], self.size[1], 1.0)
+            pilOverlayImageWirthAlpha(pImage, self.overlay, npstyle_region_porel_pos[0], npstyle_region_porel_pos[1], self.size[0], self.size[1], 1.0)
 
 
 class WinForm(QtWidgets.QWidget):
@@ -132,7 +130,7 @@ class WinForm(QtWidgets.QWidget):
 
         # Let's build a kalman filter to filter 2d position of the pointing position 
         # more filtering than tracking, a zero position initial point, and a high uncertainty (F and H are 2d identity)
-        self.kalman = KalmanFilter(10*np.eye(2), 1*np.eye(2), np.array([0,0]), 2*np.eye(2),np.eye(2),np.eye(2))
+        self.kalman = KalmanFilter(10*np.eye(2), 1*np.eye(2), np.array([0,0]), 10*np.eye(2),np.eye(2),np.eye(2))
 
 
         # FPS processing
@@ -145,8 +143,16 @@ class WinForm(QtWidgets.QWidget):
         self.showMaximized()
         layout=QtWidgets.QGridLayout()
 
-        self.timer=QtCore.QTimer()
-        self.timer.timeout.connect(self.update)
+        # timers
+        self.process_timer=QtCore.QTimer()
+        self.process_timer.setInterval(10)
+        self.process_timer.timeout.connect(self.process)
+
+        self.visual_timer=QtCore.QTimer()
+        self.visual_timer.setInterval(100)
+        self.visual_timer.timeout.connect(self.update_ui)
+
+
         # Create image to view the camera input 
         self.image = pg.ImageView()
         self.image.setMaximumWidth(200)
@@ -180,17 +186,22 @@ class WinForm(QtWidgets.QWidget):
         self.infos = QtWidgets.QLabel(f"Shoot with blinks.\nScore: {self.score}")
         self.infos.setStyleSheet("font-size:24px")
         self.infos.setMinimumHeight(100)
+        self.eye_opening_pb = QtWidgets.QProgressBar()
+        self.eye_opening_pb.setOrientation(QtCore.Qt.Vertical)
 
         layout.addWidget(self.infos,0,0,1,1)
         layout.addWidget(self.image,1,0,1,1)
         layout.addWidget(self.point_pos,1,1,1,1)
+        layout.addWidget(self.eye_opening_pb,1,2,1,1)
 
-        self.timer.start()
+        self.process_timer.start()
+        self.visual_timer.start()
 
         self.setLayout(layout)
+        self.updated_image = np.zeros((height,width,3))
+        self.game_ui = np.zeros((height,width,3))
 
-
-    def update(self):
+    def process(self):
         # Read image
         success, image = cap.read()
         
@@ -201,43 +212,46 @@ class WinForm(QtWidgets.QWidget):
         # Process the image to extract faces and draw the masks on the face in the image
         fa.process(image)
         if fa.nb_faces>0:
-            for i in range(fa.nb_faces):
+            #for i in range(fa.nb_faces):
+                i=0
                 face = fa.faces[i]
                 # Get head position and orientation compared to the reference pose (here the first frame will define the orientation 0,0,0)
-                pos, ori = face.get_head_posture()
-                if pos is not None:
+                self.face_pos, self.face_ori = face.get_head_posture()
+                if self.face_pos is not None:
 
-                    self.image_view = self.empty_image_view.copy()
                     
                     # First let's get the forward line (a virtual line that goes from the back of the head through tho nose towards the camera)
-                    li  =    get_z_line_equation(pos, ori)
+                    li  =    get_z_line_equation(self.face_pos, self.face_ori)
                     # Now we find the intersection point between the line and the plan. p is the 3d coordinates of the intersection pount, and p2d is the coordinates of this point in the plan
-                    p, p2d   =    get_plane_line_intersection(self.main_plane, li)
-                    self.kalman.process(p2d)
+                    p, self.p2d   =    get_plane_line_intersection(self.main_plane, li)
+                    self.kalman.process(self.p2d)
                     # Filtered p2d
-                    p2d = self.kalman.x
+                    self.p2d = self.kalman.x
 
 
                     # Detect blinking
-                    left_eye_opening, right_eye_opening, is_blink = face.process_eyes(image, detect_blinks=True, draw_landmarks=False, blink_th=0.5)
-                    for ch in self.chaceables:
-                        is_contact = ch.check_contact(p2d)
-                        ch.draw(self.image_view)
-                        if is_contact and is_blink:
-                            ch.move_to(np.array([np.random.randint(-image_size[0]//2,image_size[0]//2-20), np.random.randint(-image_size[1]//2,image_size[1]//2-20)]))
-                            self.score += 1
-                            self.infos.setText(f"Shoot with blinks.\nScore: {self.score}")
+                    self.left_eye_opening, self.right_eye_opening, self.is_blink = face.process_eyes(image, detect_blinks=True, draw_landmarks=False, blink_th=0.6)
+                    
 
-                    drawCross(self.image_view, (p2d+np.array(image_size)//2).astype(np.int), (200,0,0), 3)
-                    showErrorEllipse(self.image_view, 10, p2d+np.array(image_size)//2, self.kalman.P,(255,0,0), 2)
+        self.updated_image = image
+        #
+    def update_ui(self):
+        self.eye_opening_pb.setValue(100*(self.left_eye_opening+self.right_eye_opening)/2)
+        self.game_ui_img = Image.fromarray(np.uint8(self.empty_image_view.copy()))
+        for ch in self.chaceables:
+            is_contact = ch.check_contact(self.p2d)
+            ch.draw(self.game_ui_img)
+            if is_contact and self.is_blink:
+                ch.move_to(np.array([np.random.randint(-image_size[0]//2,image_size[0]//2-20), np.random.randint(-image_size[1]//2,image_size[1]//2-20)]))
+                self.score += 1
+                self.infos.setText(f"Shoot with blinks.\nScore: {self.score}")
 
-
-                    # Just put a reference on the nose
-                    face.draw_reference_frame(image, pos, ori, origin=face.getlandmark_pos(Face.nose_tip_index))
-                    self.point_pos.setImage(np.swapaxes(self.image_view,0,1))
-
-
-        self.image.setImage(np.swapaxes(image,0,1))
+        pilDrawCross(self.game_ui_img, (self.p2d+np.array(image_size)//2).astype(np.int), (200,0,0), 3)
+        self.game_ui_img = pilShowErrorEllipse(self.game_ui_img, 10, self.p2d+np.array(image_size)//2, self.kalman.P,(255,0,0), 2)        
+        # Just put a reference on the nose
+        #face.draw_reference_frame(image, pos, ori, origin=face.getlandmark_pos(Face.nose_tip_index))
+        self.image.setImage(np.swapaxes(self.updated_image,0,1))
+        self.point_pos.setImage(np.swapaxes(np.array(self.game_ui_img),0,1))
 
 
 if __name__ == '__main__':

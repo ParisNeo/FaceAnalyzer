@@ -9,7 +9,7 @@ from PySide2 import QtCore
 from numpy.lib.type_check import imag
 from scipy.ndimage.measurements import label
 from FaceAnalyzer import FaceAnalyzer, Face,  DrawingSpec, buildCameraMatrix, faceOrientation2Euler
-from FaceAnalyzer.Helpers import get_z_line_equation, get_plane_infos, get_plane_line_intersection, KalmanFilter, showErrorEllipse, drawCross, region_3d_2_region_2d, is_point_inside_region
+from FaceAnalyzer.Helpers import get_z_line_equation, get_plane_infos, get_plane_line_intersection, KalmanFilter, cvDrawCross, cvOverlayImageWirthAlpha, cvShowErrorEllipse, region_3d_2_region_2d, is_point_inside_region
 import numpy as np
 import cv2
 import time
@@ -229,7 +229,8 @@ class WinForm(QtWidgets.QWidget):
         # Process the image to extract faces and draw the masks on the face in the image
         fa.process(image)
         if fa.nb_faces>0:
-            for i in range(fa.nb_faces):
+            #for i in range(fa.nb_faces):
+                i = 0
                 face = fa.faces[i]
                 # Get head position and orientation compared to the reference pose (here the first frame will define the orientation 0,0,0)
                 pos, ori = face.get_head_posture()
@@ -261,8 +262,8 @@ class WinForm(QtWidgets.QWidget):
                         if is_contact and is_blink:
                             ch.move_to(np.array([np.random.randint(-image_size[0]//2,image_size[0]//2-20), np.random.randint(-image_size[1]//2,image_size[1]//2-20)]))
 
-                    drawCross(self.image_view, (p2d+np.array(image_size)//2).astype(np.int), (200,0,0),3)
-                    showErrorEllipse(self.image_view,10,p2d+np.array(image_size)//2, self.kalman.P,(255,0,0),2)
+                    cvDrawCross(self.image_view, (p2d+np.array(image_size)//2).astype(np.int), (200,0,0),3)
+                    cvShowErrorEllipse(self.image_view,10,p2d+np.array(image_size)//2, self.kalman.P,(255,0,0),2)
 
                     # Just put a reference on the nose
                     face.draw_reference_frame(image, pos, ori, origin=face.getlandmark_pos(Face.nose_tip_index))
