@@ -60,8 +60,6 @@ class Face():
 
     # Nose, left face_extremety, right_face_extremity
     
-
-
     eyes_3d_reference_positions=np.array([
         [-50,50,-70],        # left Eye iris
         [50,50,-70],         # right Eye iris
@@ -92,6 +90,8 @@ class Face():
         471,           # right Eye right
         ]    
 
+
+
     # A list of simplified facial features used to reduce computation cost of drawing and morphing faces
     simplified_face_features = [
         10, 67, 54, 162, 127, 234, 93, 132,172,150,176,148,152,377,378,365,435,323,447,454,264,389,251, 332, 338, #Oval
@@ -101,6 +101,18 @@ class Face():
         61, 84, 314, 409, 14, 87, 81, 12,37,267, 402, 311, 321, 269, 39, 415, 91, 178, 73, 303, 325,
         50, 207, 280, 427
     ]
+
+
+    mouth_outer_indices = [
+                            362,  # right 
+                            374,  # bottom
+                            263,  # left
+                            386   # top
+                            ]
+
+    mouth_inner_indices = [474, 475, 476, 477]
+
+
     all_face_features = list(range(468))
     def __init__(self, landmarks:NamedTuple = None, image_shape: tuple = (640, 480)):
         """Creates an instance of Face
@@ -133,6 +145,23 @@ class Face():
         self.reference_facial_cloud = None
 
         self.mp_drawing = mp.solutions.drawing_utils
+
+        #Using the canonical face coordinates
+        self.face_3d_reference_positions=np.array([
+        [0,-0.004632,0.075866],            # Nose tip        
+        [ 0.04671,0.026645,0.030841],      # Left eye extremety
+        [-0.04671,0.026645,0.030841],      # Right eye extremety
+        [0,0.04886,0.053853],              # forehead center
+        #[0,-0.079422,0.051812]             # Chin 
+        ])*1000 # go to centimeters
+        self.face_reference_landmark_ids = [
+            4,          # Nose tip
+            359,        # Left eye extremety
+            130,        # Right eye extremety
+            151,        # Forehead
+            #199         # Chin
+        ]
+        """
         # Three points were removed from my initial code (I leave them for tests) as they seem to be affected by grimacing (the chin) or are not very accurate (Left and Right)
         self.face_3d_reference_positions=np.array([
         [0,0,0],            # Nose tip
@@ -155,6 +184,7 @@ class Face():
             359,        # Right right eye
             151         # forehead center
             ]
+        """
 
 
     @property
@@ -252,7 +282,7 @@ class Face():
         assert self.ready, "Face object is not ready. There are no landmarks extracted."
 
         lm = self.npLandmarks[index, ...]
-        return (lm[0], lm[1], lm[2])
+        return np.array([lm[0], lm[1], lm[2]])
 
 
     def getlandmarks_pos(self, indices: list) -> np.ndarray:
@@ -610,6 +640,103 @@ class Face():
             return left_eye_opening, right_eye_opening
 
 
+
+
+    def process_mouth(self, image: np.ndarray, normalize:bool=False, detect_yawning: bool = False, yawning_th:float=5, yawning_double_threshold_factor:float=1.05, draw_landmarks: bool = False)->tuple:
+        """Process mouth information and extract moth opening value, normalized mouth opening and detect yawning
+
+        Args:
+            image (np.ndarray): Image to draw on when landmarks are to be drawn
+            normalize (bool, optional): If True, the eye opening will be normalized by the distance between the eyes. Defaults to False.
+            detect_blinks (bool, optional): If True, blinks will be detected. Defaults to False.
+            yawn_th (float, optional): yawn threshold. Defaults to 5.
+            yawning_double_threshold_factor (float, optional): a factor for double yawning threshold detection. 1 means that the threshold is the same for closing and opening. If you put 1.2, it means that after closing, the yawning is considered finished only when the opening surpssess the yawn_threshold*1.2. Defaults to 1.05.
+            draw_landmarks (bool, optional): If True, the landmarks will be drawn on the image. Defaults to False.
+
+        Returns:
+            tuple: Depending on what configuration was chosen in the parameters, the output is:
+            left_eye_opening, right_eye_opening, is_yawn if yawning detection is activated
+            left_eye_opening, right_eye_opening if yawning detection is deactivated
+        """
+
+        # Assertion to verify that the face object is ready
+        assert self.ready, "Face object is not ready. There are no landmarks extracted."
+
+
+        left_eye_center = self.getlandmark_pos(self.left_eye_center_index)
+        left_eyelids_contour = self.getlandmarks_pos(self.left_eyelids_indices)
+        left_eye_upper = left_eyelids_contour[3, ...]
+        left_eye_lower = left_eyelids_contour[1, ...]
+
+        left_eye_contour = self.getlandmarks_pos(self.left_eye_contour_indices)
+        left_eye_iris_upper = left_eye_contour[3, ...]
+        left_eye_iris_lower = left_eye_contour[1, ...]
+
+        right_eye_center = self.getlandmark_pos(self.right_eye_center_index)
+        right_eyelids_contour = self.getlandmarks_pos(self.right_eyelids_indices)
+        right_eye_upper = right_eyelids_contour[3, ...]
+        right_eye_lower = right_eyelids_contour[1, ...]
+
+        right_eye_contour = self.getlandmarks_pos(self.right_eye_contour_indices)
+        right_eye_iris_upper = right_eye_contour[1, ...]
+        right_eye_iris_lower = right_eye_contour[3, ...]
+
+
+
+
+        if draw_landmarks:
+
+            image = self.draw_landmark(image, left_eye_upper, (0, 0, 255),1)
+            image = self.draw_landmark(image, left_eye_lower, (0, 0, 255),1)
+
+
+            image = self.draw_landmark(image, left_eye_iris_upper, (255, 0, 0),1)
+            image = self.draw_landmark(image, left_eye_iris_lower, (255, 0, 0),1)
+
+            image = self.draw_landmark(image, right_eye_upper, (0, 0, 255),1)
+            image = self.draw_landmark(image, right_eye_lower, (0, 0, 255),1)
+
+            image = self.draw_landmark(image, right_eye_iris_upper, (255, 0, 0),1)
+            image = self.draw_landmark(image, right_eye_iris_lower, (255, 0, 0),1)            
+
+            image = self.draw_contour(image, left_eyelids_contour, (0, 0, 0),2)
+            image = self.draw_contour(image, left_eye_contour, (0, 0, 0),2)
+
+            image = self.draw_landmark(image, left_eye_center, (255, 0, 255),1)
+
+            image = self.draw_contour(image, right_eyelids_contour, (0, 0, 0),2)
+            image = self.draw_contour(image, right_eye_contour, (0, 0, 0),2)
+
+            image = self.draw_landmark(image, right_eye_center, (255, 0, 255),1)
+
+
+
+        # Compute eye opening
+        left_eye_opening = np.linalg.norm(left_eye_upper[0:2]-left_eye_lower[0:2])/np.linalg.norm(left_eye_iris_upper[0:2]-left_eye_iris_lower[0:2])
+        right_eye_opening = np.linalg.norm(right_eye_upper[0:2]-right_eye_lower[0:2])/np.linalg.norm(right_eye_iris_upper[0:2]-right_eye_iris_lower[0:2])
+
+
+        if normalize:
+            ed = self.getEyesDist()
+            left_eye_opening /= ed
+            right_eye_opening /= ed
+            th = yawning_th / ed
+        else:
+            th = yawning_th
+
+        if detect_yawning:
+            is_blink = False
+            eye_opening = (left_eye_opening+right_eye_opening)/2
+            if eye_opening < th and not self.blinking:
+                self.blinking = True
+                is_blink = True
+            elif eye_opening > th*yawning_double_threshold_factor:
+                self.blinking = False
+
+            return left_eye_opening, right_eye_opening, is_blink
+        else:
+            return left_eye_opening, right_eye_opening
+
     # ======================== Face copying, and morphing ====================
 
     def triangulate(self, landmark_indices:list=None)->list:
@@ -848,7 +975,7 @@ class Face():
                                        contours_drawing_specs
                                        )
 
-    def draw_reference_frame(self, image:np.ndarray, pos: np.ndarray, ori:np.ndarray, origin:np.ndarray, translation:np.ndarray=None, line_length:int=50)->None:
+    def draw_reference_frame(self, image:np.ndarray, pos: np.ndarray, ori:np.ndarray, origin:np.ndarray=None, line_length:int=50)->None:
         """Draws a reference frame at a sprecific position
 
         Args:
@@ -861,23 +988,27 @@ class Face():
         """
 
         #Let's project three vectors ex,ey,ez to form a frame and draw it on the nose
+        (center_point2D_x, jacobian) = cv2.projectPoints(np.array([(0, 0.0, 0.0)]), ori, pos, buildCameraMatrix(), np.zeros((4,1)))
         (end_point2D_x, jacobian) = cv2.projectPoints(np.array([(line_length, 0.0, 0.0)]), ori, pos, buildCameraMatrix(), np.zeros((4,1)))
         (end_point2D_y, jacobian) = cv2.projectPoints(np.array([(0.0, line_length, 0.0)]), ori, pos, buildCameraMatrix(), np.zeros((4,1)))
         (end_point2D_z, jacobian) = cv2.projectPoints(np.array([(0.0, 0.0, line_length)]), ori, pos, buildCameraMatrix(), np.zeros((4,1)))
 
-        p1 = ( int(origin[0]), int(origin[1]))
+        p1 = ( int(center_point2D_x[0][0][0]), int(center_point2D_x[0][0][1]))         
         p2_x = ( int(end_point2D_x[0][0][0]), int(end_point2D_x[0][0][1]))         
         p2_y = ( int(end_point2D_y[0][0][0]), int(end_point2D_y[0][0][1]))         
         p2_z = ( int(end_point2D_z[0][0][0]), int(end_point2D_z[0][0][1]))   
 
-        if translation is not None:
-            p1=   (p1[0]+translation[0], p1[1]+translation[1])
+        """
+        """
+        if origin is not None:
+            do = (int(origin[0]- p1[0]), int(origin[1]- p1[1]))
+            p1=  (int(origin[0]), int(origin[1]))
 
-            p2_x= (p2_x[0]+translation[0],p2_x[1]+translation[1])
+            p2_x= (p2_x[0]+do[0],p2_x[1]+do[1])
 
-            p2_y= (p2_y[0]+translation[0],p2_y[1]+translation[1])
+            p2_y= (p2_y[0]+do[0],p2_y[1]+do[1])
 
-            p2_z= (p2_z[0]+translation[0],p2_z[1]+translation[1])
+            p2_z= (p2_z[0]+do[0],p2_z[1]+do[1])
 
         cv2.line(image, p1, p2_x, (255,0,0), 2)   
         cv2.line(image, p1, p2_y, (0,255,0), 2)   

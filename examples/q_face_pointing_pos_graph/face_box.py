@@ -266,7 +266,8 @@ class WinForm(QtWidgets.QWidget):
                     cvShowErrorEllipse(self.image_view,10,p2d+np.array(image_size)//2, self.kalman.P,(255,0,0),2)
 
                     # Just put a reference on the nose
-                    face.draw_reference_frame(image, pos, ori, origin=face.getlandmark_pos(Face.nose_tip_index))
+                    nt = face.getlandmark_pos(Face.nose_tip_index)[:,None]
+                    face.draw_reference_frame(image, pos, ori, origin=nt)
                     self.point_pos.setImage(np.swapaxes(self.image_view,0,1))
 
         # Process fps

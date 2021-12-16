@@ -144,11 +144,10 @@ class WinForm(QtWidgets.QWidget):
                     left_pos, right_pos = face.get_eyes_position()
                     left_eye_ori = face.compose_eye_rot(left_pos, ori)
                     right_eye_ori = face.compose_eye_rot(right_pos, ori)
-                    nt = face.getlandmark_pos(Face.nose_tip_index)
                     left_eye = face.getlandmark_pos(Face.left_eye_center_index)
                     right_eye = face.getlandmark_pos(Face.right_eye_center_index)
-                    face.draw_reference_frame(image, pos, left_eye_ori, origin=nt, translation=(int(left_eye[0]-nt[0]), int(left_eye[1]-nt[1])))
-                    face.draw_reference_frame(image, pos, right_eye_ori, origin=nt, translation=(int(right_eye[0]-nt[0]), int(right_eye[1]-nt[1])))     
+                    face.draw_reference_frame(image, pos, left_eye_ori, origin=left_eye)
+                    face.draw_reference_frame(image, pos, right_eye_ori, origin=right_eye)
                     left_eye_yaw, left_eye_pitch, left_eye_roll = faceOrientation2Euler(left_eye_ori, degrees=True)
                     right_eye_yaw, right_eye_pitch, right_eye_roll = faceOrientation2Euler(right_eye_ori, degrees=True)
                        

@@ -68,8 +68,8 @@ while cap.isOpened():
                 nt = face.getlandmark_pos(Face.nose_tip_index)
                 left_eye = face.getlandmark_pos(Face.left_eye_center_index)
                 right_eye = face.getlandmark_pos(Face.right_eye_center_index)
-                face.draw_reference_frame(image, pos, left_eye_ori, origin=nt, translation=(int(left_eye[0]-nt[0]), int(left_eye[1]-nt[1])))
-                face.draw_reference_frame(image, pos, right_eye_ori, origin=nt, translation=(int(right_eye[0]-nt[0]), int(right_eye[1]-nt[1])))
+                face.draw_reference_frame(image, pos, left_eye_ori, origin=left_eye)
+                face.draw_reference_frame(image, pos, right_eye_ori, origin=right_eye)
             
     # Process fps
     curr_frame_time = time.time()
