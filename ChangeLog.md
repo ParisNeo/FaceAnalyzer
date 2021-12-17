@@ -1,3 +1,6 @@
+# V 1.7.0
+ - Added canonical face and linked vertices to that face which enhances the face tracking accuracy greatly
+ - Enhanced reference frame drawing
 # V 1.6.0
  - Reorganized code : All geometry functions are now in Helpers
  - Added new helpers to manage images overlaying
