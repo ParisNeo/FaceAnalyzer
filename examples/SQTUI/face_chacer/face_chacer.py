@@ -156,7 +156,7 @@ class WinForm(QtWidgets.QWidget):
 
 
                     # Detect blinking
-                    self.left_eye_opening, self.right_eye_opening, self.is_blink = face.process_eyes(image, detect_blinks=True, draw_landmarks=False, blink_th=0.6)
+                    self.left_eye_opening, self.right_eye_opening, self.is_blink = face.process_eyes(image, detect_blinks=True,  blink_th=0.35)
                     
 
         self.updated_image = image

@@ -61,18 +61,29 @@ The library is structured as follow:
  - Face         : The main module that represents a face. Allows doing multiple operations such as copying the face and put it on another one or estimate eye opening, head position/orientation in space etc.
  
 ## Examples
-### face_mesh :
+### OpenCV
+Here are opencv based programs
+#### face_mesh :
 A basic simple example of how to use webcam to get video and process each frame to extract faces and draw face landmarks on the face.
-### from_image :
+#### from_image :
 A basic simple example of how to extract faces from an image file.
-### eye_process :
+#### eye_process :
 An example of how to extract faces from a video (using webcam) then process eyes and return eyes openings as well as detecting blinks.
-### face_off :
+#### face_off :
 An example of how to use webcam to switch faces between two persons.
-### face_mask :
+#### face_mask :
 An example of how to use webcam to put a mask on a face.
+#### extract_face :
+An example of how to use webcam to extract only the face (generates a black image with only the face).
+#### eyes_tracker :
+An example to show how we can get the eyes orientation in space.
+### Pygame
+Here you can find all examples using pygame library
+#### win_face_mouse_controller
+A software to control a mouse using the face and blink to press
+### SQTUI
 
-### q_face_infos_graph :
+#### q_face_infos_graph :
 An example to view face and eye information over time (uses pyqt or pySide through SQTUI library + pyqtgraph)
 please install sqtui using pip:
 
@@ -96,14 +107,14 @@ os.environ['PYQTGRAPH_QT_LIB']="PySide2"
 
 We use the same environment variable used by PYQTGRAPH to avoid having two different environment variables and to synchronize stqui and pyqtgraph on the basme backbone.
 
-### q_face_pointing_pos_graph :
+#### q_face_pointing_pos_graph :
 An example on how we can track face pointing vector and find the position of intersection between the line guided by this vector and a plane defined by at least 3 points in space. We demonstrate how it is possible to detect the intersection of this vector with a region that can be convex or not. This can also be done using gaze vector.
 
 This example allows us to define regions in a 3d space and determine if the user is looking at on object or another. Very useful for example for controlling stuff using gaze or face motion. This can help people with disability to use their gaze to interact with the screen. (A calibration may be required to determine how to position elements in the reference frame of the camera).
 
 The module shows how to use the kalman filter helper to enhance the tracking and remove noise.
 
-### face_chacer :
+#### face_chacer :
 
 A little game where you use your face top chace some animals on the screen. You need to point on them and blink to shoot.
 Uses Kalman filter to filter motion which makes it interesting.

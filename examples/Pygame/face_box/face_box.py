@@ -59,7 +59,7 @@ while Running:
             pos, ori = face.get_head_posture()
             if pos is not None:
                 yaw, pitch, roll = faceOrientation2Euler(ori, degrees=True)
-                face.draw_bounding_box(image, color=box_colors[i%3], thickness=5)
+                face.draw_oriented_bounding_box(image, color=box_colors[i%3], thickness=1)
                 face.draw_reference_frame(image, pos, ori, origin=face.getlandmark_pos(Face.nose_tip_index))
 
 

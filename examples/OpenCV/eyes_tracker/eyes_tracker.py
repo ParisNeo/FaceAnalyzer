@@ -4,6 +4,7 @@
     Description :
         A code to test FaceAnalyzer detects a face, draws a mask around it and measure head position and orientation
 <================"""
+from os import link
 from FaceAnalyzer import FaceAnalyzer, Face,  DrawingSpec, buildCameraMatrix, faceOrientation2Euler
 import numpy as np
 import cv2
@@ -63,12 +64,23 @@ while cap.isOpened():
                         image, f"Position : {pos[0,0]:2.2f},{pos[1,0]:2.2f},{pos[2,0]:2.2f}", (10, 120), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (255, 255, 255))
             
                 left_pos, right_pos = face.get_eyes_position()
-                print(f'left : {left_pos}, right : {right_pos}')
-                left_eye_ori = face.compose_eye_rot(left_pos, ori)
-                right_eye_ori = face.compose_eye_rot(right_pos, ori)
-                nt = face.getlandmark_pos(Face.nose_tip_index)
+                left_eye_opening, right_eye_opening, is_blink = face.process_eyes(image, detect_blinks=True, blink_th=0.6)
+                print(f"left_eye_opening :{left_eye_opening}, right_eye_opening:{right_eye_opening}")
+
+                #print(f'left : {left_pos}, right : {right_pos}')
+                face.draw_landmarks(image,face.getlandmarks_pos(face.left_eyelids_indices),1)
+                face.draw_landmarks(image,face.getlandmarks_pos(face.left_eye_contour_indices),1,(0,0,0),1, link=True)
+
+                face.draw_landmarks(image,face.getlandmarks_pos(face.right_eyelids_indices),1)
+                face.draw_landmarks(image,face.getlandmarks_pos(face.right_eye_contour_indices),1,(0,0,0),1, link=True)
+
+                left_eye_ori = face.compose_eye_rot(left_pos, ori,np.array([-0.04,-0.07]),90,60)
+                right_eye_ori = face.compose_eye_rot(right_pos, ori,np.array([-0.02,-0.15]),90,60)
+
                 left_eye = face.getlandmark_pos(Face.left_eye_center_index)
                 right_eye = face.getlandmark_pos(Face.right_eye_center_index)
+
+
                 face.draw_reference_frame(image, pos, left_eye_ori, origin=left_eye)
                 face.draw_reference_frame(image, pos, right_eye_ori, origin=right_eye)
             

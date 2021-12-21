@@ -1,10 +1,10 @@
 from sqtui import QtWidgets, QtCore
 import pyqtgraph as pg
-from PIL import Image, ImageDraw
+import cv2
 from pathlib import Path
 import numpy as np
-from FaceAnalyzer.Helpers import  pilOverlayImageWirthAlpha, is_point_inside_region
-
+from FaceAnalyzer.Helpers import  cvOverlayImageWirthAlpha, pilOverlayImageWirthAlpha, is_point_inside_region
+import pygame
 
 class Chaceable():
     """An object that can be chaced in space
@@ -21,7 +21,7 @@ class Chaceable():
             highlight_color (tuple, optional): The hilight color of the chaceable. Defaults to (0,255,0).
         """
         self.image_size = image_size
-        self.overlay = Image.open(str(image_path))
+        self.overlay = cv2.imread(str(image_path))
         self.size =size
         self.shape=np.array([[0,0],[size[0],0],[size[0],size[1]],[0,size[1]]]).T
         self.pos= position_2d.reshape((2,1))
@@ -51,7 +51,7 @@ class Chaceable():
         self.is_contact=is_point_inside_region(p2d, self.curr_shape)
         return self.is_contact
 
-    def draw(self, pImage:Image)->None:
+    def draw(self, pImage:np.ndarray)->None:
         """Draws the chaceable on an image
 
         Args:
@@ -59,6 +59,6 @@ class Chaceable():
         """
         npstyle_region_porel_pos = self.pos+np.array([self.image_size]).T//2
         if self.is_contact:
-            pilOverlayImageWirthAlpha(pImage, self.overlay, npstyle_region_porel_pos[0], npstyle_region_porel_pos[1], self.size[0], self.size[1], 0.5)
+            cvOverlayImageWirthAlpha(pImage, self.overlay, npstyle_region_porel_pos[0], npstyle_region_porel_pos[1], self.size[0], self.size[1], 0.5)
         else:
-            pilOverlayImageWirthAlpha(pImage, self.overlay, npstyle_region_porel_pos[0], npstyle_region_porel_pos[1], self.size[0], self.size[1], 1.0)
+            cvOverlayImageWirthAlpha(pImage, self.overlay, npstyle_region_porel_pos[0], npstyle_region_porel_pos[1], self.size[0], self.size[1], 1.0)

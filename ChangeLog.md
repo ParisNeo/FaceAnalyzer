@@ -1,3 +1,9 @@
+# V 1.8.0
+ - Enhanced eye tracking
+ - Added multiple examples
+ - Reorganized code and changed some method structures
+ - Added pygame examples
+ - Separated image drawing from computing 
 # V 1.7.0
  - Added canonical face and linked vertices to that face which enhances the face tracking accuracy greatly
  - Enhanced reference frame drawing

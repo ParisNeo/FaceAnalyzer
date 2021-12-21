@@ -255,7 +255,9 @@ class WinForm(QtWidgets.QWidget):
                     self.face_pointing_pos_2d_y_plot.add_data(p2d[1])
 
                     # Detect blinking
-                    left_eye_opening, right_eye_opening, is_blink = face.process_eyes(image, detect_blinks=True, draw_landmarks=True, blink_th=0.6)
+                    left_eye_opening, right_eye_opening, is_blink = face.process_eyes(image, detect_blinks=True,  blink_th=0.35)
+                    face.draw_eyes_landmarks(image)
+                    
                     for ch in self.chaceables:
                         is_contact = ch.check_contact(p2d)
                         ch.draw(self.image_view)

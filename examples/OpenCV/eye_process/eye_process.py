@@ -31,8 +31,8 @@ while cap.isOpened():
     fa.process(image)
     #Now if we find a face
     if fa.nb_faces==1:
-        left_eye_opening, right_eye_opening, is_blink = fa.faces[0].process_eyes(image, detect_blinks=True, draw_landmarks=True, blink_th=0.3) #, normalize=True
-        
+        left_eye_opening, right_eye_opening, is_blink = fa.faces[0].process_eyes(image, detect_blinks=True, blink_th=0.35) #, normalize=True
+        fa.faces[0].draw_eyes_landmarks(image)
         # Get eyes positions
         left_eye_pos  = fa.faces[0].getlandmark_pos(fa.faces[0].left_eye_center_index)
         right_eye_pos = fa.faces[0].getlandmark_pos(fa.faces[0].right_eye_center_index)

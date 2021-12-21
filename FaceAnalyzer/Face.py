@@ -13,6 +13,7 @@ from typing import NamedTuple, Tuple
 import numpy as np
 import mediapipe as mp
 import cv2
+from numpy import linalg
 from scipy.signal import butter, filtfilt
 import math
 import time
@@ -34,64 +35,168 @@ class Face():
     # Key landmark indices
     nose_tip_index = 4
 
-    left_eyelids_indices = [
+    simplified_left_eyelids_indices = [
                             362,  # right 
                             374,  # bottom
                             263,  # left
                             386   # top
                             ]
 
-    left_eye_contour_indices = [474, 475, 476, 477]
+    left_eyelids_indices = [
+                            362,  # right 
+                            382,
+                            381,
+                            380,
+                            374,  # bottom
+                            373,
+                            390,
+                            249,
+                            263,  # left
+                            466,
+                            388,
+                            387,
+                            386,  # top
+                            385,
+                            384,
+                            398
+                            ]                            
+
+    left_eye_contour_indices = [
+                                    476, # Right
+                                    477, # Bottom
+                                    474, # Left
+                                    475  # Top
+                                ]
     left_eye_center_index = 473
 
-    right_eyelids_indices = [
+    simplified_right_eyelids_indices = [
                                 130, # right
                                 145, # bottom
                                 133, # left
                                 159  # top
                             ]
+
+    right_eyelids_indices = [
+                                130, # right
+                                7,
+                                163,
+                                144,
+                                145, # bottom
+                                153,
+                                154,
+                                155,
+                                133, # left
+                                173,
+                                157,
+                                158,
+                                159, # top
+                                160,
+                                161,
+                                246,
+                                33
+                            ]
+
     right_eye_contour_indices = [
-                                    469, 
-                                    470, 
-                                    471, 
-                                    472
+                                    471, # right
+                                    472, # bottom
+                                    469, # left
+                                    470  # top
                                 ]
     right_eye_center_index = 468    
 
-    # Nose, left face_extremety, right_face_extremity
-    
-    eyes_3d_reference_positions=np.array([
-        [-50,50,-70],        # left Eye iris
-        [50,50,-70],         # right Eye iris
-        [-50,55.5,-70],        # left Eye top
-        [50,55.5,-70],        # right Eye top
-        [-50,44.5,-70],        # left Eye bottom
-        [50,44.5,-70],        # right Eye bottom
+    # Mouth
+    simplified_mouth_outer_indices = [
+                            61,  # right 
+                            17,  # bottom
+                            291,  # left
+                            0   # top
+                            ]
 
-        [-55.5,50,-70],        # left Eye left
-        [-45.5,50,-70],          # left Eye right
+    mouth_outer_indices = [
+                            61,  # right 
+                            146,
+                            91,
+                            181,
+                            84,
+                            17,  # bottom
+                            314,
+                            405,
+                            321,
+                            375,
+                            291,  # left
+                            409,
+                            270,
+                            269,
+                            267,
+                            0,  # top
+                            37,
+                            39,
+                            40,
+                            185
+                            ]      
 
-        [45.5,50,-70],        # right Eye left
-        [55.5,50,-70],          # right Eye right
-    ])
+    simplified_mouth_inner_indices = [
+                            78,  # right 
+                            14,  # bottom
+                            308,  # left
+                            13   # top
+                            ]
 
-    eyes_orientation_landmarks = [
-        473,           # left Eye iris
-        468,           # right Eye iris
-        475,           # left Eye top
-        470,           # right Eye top
-        477,           # left Eye bottom
-        472,           # left Eye bottom
+    mouth_inner_indices = [
+                            78,  # right 
+                            95,
+                            88,
+                            178,
+                            87,
+                            14,  # bottom
+                            317,
+                            402,
+                            318,
+                            324,
+                            308,  # left
+                            415,
+                            310,
+                            311,
+                            312,
+                            13,  # top
+                            82,
+                            81,
+                            80,
+                            191
+                            ]  
 
-        474,           # left Eye left        
-        476,           # left Eye right        
 
-        469,           # right Eye left
-        471,           # right Eye right
-        ]    
+    simplified_nose_indices = [
+                            129,  # right 
+                            94,  # bottom
+                            358,  # left
+                            4   # top
+                            ]
 
-
-
+    nose_indices = [
+                            129,  # right 
+                            219,
+                            166,
+                            239,
+                            20,
+                            242,
+                            141,
+                            94,  # bottom
+                            370,
+                            462,
+                            250,
+                            459,
+                            392,
+                            439,
+                            358,  # left
+                            344,
+                            440,
+                            275,
+                            4,  # top
+                            45,
+                            220,
+                            115
+                            ]  
     # A list of simplified facial features used to reduce computation cost of drawing and morphing faces
     simplified_face_features = [
         10, 67, 54, 162, 127, 234, 93, 132,172,150,176,148,152,377,378,365,435,323,447,454,264,389,251, 332, 338, #Oval
@@ -103,14 +208,6 @@ class Face():
     ]
 
 
-    mouth_outer_indices = [
-                            362,  # right 
-                            374,  # bottom
-                            263,  # left
-                            386   # top
-                            ]
-
-    mouth_inner_indices = [474, 475, 476, 477]
 
 
     all_face_features = list(range(468))
@@ -161,6 +258,8 @@ class Face():
             151,        # Forehead
             #199         # Chin
         ]
+
+
         """
         # Three points were removed from my initial code (I leave them for tests) as they seem to be affected by grimacing (the chin) or are not very accurate (Left and Right)
         self.face_3d_reference_positions=np.array([
@@ -319,7 +418,7 @@ class Face():
         )
 
 
-    def draw_landmarks(self, image: np.ndarray, landmarks: np.ndarray, radius:int=1, color: tuple = (255, 0, 0), thickness: int = 1) -> np.ndarray:
+    def draw_landmarks(self, image: np.ndarray, landmarks: np.ndarray, radius:int=1, color: tuple = (255, 0, 0), thickness: int = 1, link=False) -> np.ndarray:
         """Draw a list of landmarks on an image
 
         Args:
@@ -333,8 +432,11 @@ class Face():
         Returns:
             np.ndarray: The image with the contour drawn on it
         """
-        for i in range(landmarks.shape[0]):
+        lm_l=landmarks.shape[0]
+        for i in range(lm_l):
             image = cv2.circle(image, (int(landmarks[i,0]), int(landmarks[i,1])), radius,color, thickness)
+            if link:
+                image = cv2.line(image, (int(landmarks[i,0]), int(landmarks[i,1])),(int(landmarks[(i+1)%lm_l,0]), int(landmarks[(i+1)%lm_l,1])),color, thickness)
         return image
 
     def draw_landmark(self, image: np.ndarray, pos: tuple, color: tuple = (255, 0, 0), radius: int = 5, thickness:int=1) -> np.ndarray:
@@ -442,7 +544,7 @@ class Face():
         if camera_matrix is None:
             camera_matrix= buildCameraMatrix()
 
-        # V2 : Use opencv's PnPsolver to solve the rotation problem
+        # Use opencv's PnPsolver to solve the rotation problem
 
         face_2d_positions = self.npLandmarks[self.face_reference_landmark_ids,:2]
         (success, face_ori, face_pos, _) = cv2.solvePnPRansac(
@@ -461,14 +563,13 @@ class Face():
 
         return face_pos, face_ori
 
-
     def get_eyes_position(self)->tuple:
         """Gets the posture of the eyes (position in cartesian space and Euler angles)
         Args:
             camera_matrix (int, optional)       : The camera matrix built using buildCameraMatrix Helper function. Defaults to a perfect camera matrix 
             dist_coeffs (np.ndarray, optional)) : The distortion coefficients of the camera
         Returns:
-            tuple: (position, orientation) the orientation is either in compact rodriguez format (angle * u where u is the rotation unit 3d vector representing the rotation axis). Feel free to use the helper functions to convert to angles or matrix
+            tuple: (left_pos, right_pos) the iris position inside the eye 
         """
 
         # Assertion to verify that the face object is ready
@@ -476,44 +577,39 @@ class Face():
 
         # Left eye
         iris = np.array(self.getlandmark_pos(Face.left_eye_center_index))
+        
         left = np.array(self.getlandmark_pos(263))
         right = np.array(self.getlandmark_pos(362))
-        top = np.array(self.getlandmark_pos(386))
-        bottom = np.array(self.getlandmark_pos(374))
 
         center = (left+right)/2
         ex = left-right
-        ey = top-bottom
+        ex[2]=0
         nx = np.linalg.norm(ex)
-        ny = np.linalg.norm(ey)
         ex /=nx
-        ey /=ny
-        nx/=2
-        ny/=2
-        left_pos = np.array([np.dot((iris-center),ex)/nx,np.dot((iris-center),ey)/ny])
+
+        ey = np.cross(ex,np.array([0,0,1]))
+
+
+        left_pos = np.array([np.dot((iris-center),ex)/nx,np.dot((iris-center),ey)/nx])
 
         # right
         iris = np.array(self.getlandmark_pos(Face.right_eye_center_index))
         left = np.array(self.getlandmark_pos(133))
         right = np.array(self.getlandmark_pos(130))
-        top = np.array(self.getlandmark_pos(159))
-        bottom = np.array(self.getlandmark_pos(145))
 
         center = (left+right)/2
         ex = left-right
-        ey = top-bottom
         nx = np.linalg.norm(ex)
-        ny =np.linalg.norm(ey)
         ex /=nx
-        ey /=ny
         nx/=2
-        ny/=2
 
-        right_pos = [np.dot((iris-center),ex)/nx,np.dot((iris-center),ey)/ny]
+        ey = np.cross(ex,np.array([0,0,1]))
+
+        right_pos = [np.dot((iris-center),ex)/nx,np.dot((iris-center),ey)/nx]
 
         return left_pos, right_pos
 
-    def compose_eye_rot(self, eye_pos:list, face_orientation:np.ndarray, x2ang: int=180, y2ang:int=30)->np.ndarray:
+    def compose_eye_rot(self, eye_pos:list, face_orientation:np.ndarray, offset=np.array([0,0]), x2ang: int=90, y2ang:int=60)->np.ndarray:
         """Composes eye position with face rotation to produce eye orientation in world coordinates
 
         Args:
@@ -525,8 +621,9 @@ class Face():
         Returns:
             np.ndarray: [description]
         """
+        corrected_eye_pos=eye_pos+offset
         fo = R.from_rotvec(face_orientation[:,0])
-        ypr = R.from_euler('yxz',[-eye_pos[0]*x2ang,-eye_pos[1]*y2ang,0], degrees=True)
+        ypr = R.from_euler('yxz',[-corrected_eye_pos[0]*x2ang,-corrected_eye_pos[1]*y2ang,0], degrees=True)
         return np.array((ypr*fo).as_rotvec()).reshape((3,1))
 
 
@@ -544,16 +641,14 @@ class Face():
         pos = self.getlandmarks_pos([self.left_eye_center_index, self.right_eye_center_index])
         return np.linalg.norm(pos[1,:]-pos[0,:])
 
-    def process_eyes(self, image: np.ndarray, normalize:bool=False, detect_blinks: bool = False, blink_th:float=5, blinking_double_threshold_factor:float=1.05, draw_landmarks: bool = False)->tuple:
+    def process_eyes(self, image: np.ndarray, detect_blinks: bool = False, blink_th:float=5, blinking_double_threshold_factor:float=1.05)->tuple:
         """Process eye information and extract eye opening value, normalized eye opening and detect blinks
 
         Args:
             image (np.ndarray): Image to draw on when landmarks are to be drawn
-            normalize (bool, optional): If True, the eye opening will be normalized by the distance between the eyes. Defaults to False.
             detect_blinks (bool, optional): If True, blinks will be detected. Defaults to False.
             blink_th (float, optional): Blink threshold. Defaults to 5.
             blinking_double_threshold_factor (float, optional): a factor for double blinking threshold detection. 1 means that the threshold is the same for closing and opening. If you put 1.2, it means that after closing, the blinking is considered finished only when the opening surpssess the blink_threshold*1.2. Defaults to 1.05.
-            draw_landmarks (bool, optional): If True, the landmarks will be drawn on the image. Defaults to False.
 
         Returns:
             tuple: Depending on what configuration was chosen in the parameters, the output is:
@@ -564,75 +659,59 @@ class Face():
         # Assertion to verify that the face object is ready
         assert self.ready, "Face object is not ready. There are no landmarks extracted."
 
-
-        left_eye_center = self.getlandmark_pos(self.left_eye_center_index)
+        # 12 ->13  vs 374
         left_eyelids_contour = self.getlandmarks_pos(self.left_eyelids_indices)
-        left_eye_upper = left_eyelids_contour[3, ...]
-        left_eye_lower = left_eyelids_contour[1, ...]
+        left_eye_upper0 = left_eyelids_contour[12, ...]
+        left_eye_upper1 = left_eyelids_contour[13, ...]
+        left_eye_lower = left_eyelids_contour[4, ...]
+        left_eye_upper = (left_eye_upper0+left_eye_upper1)/2
+
+        ud = left_eye_upper-left_eye_lower
+        ex = left_eye_upper1-left_eye_upper0
+        ex /= np.linalg.norm(ex)
+        ey = np.cross(np.array([0,0,1]),ex)
+
+        left_eye_opening = np.dot(ud,ey)
+        if left_eye_opening<0:
+            right_eye_opening=0
+
+        right_eyelids_contour = self.getlandmarks_pos(self.right_eyelids_indices)
+        right_eye_upper0 = right_eyelids_contour[12, ...]
+        right_eye_upper1 = right_eyelids_contour[13, ...]
+        right_eye_lower = right_eyelids_contour[4, ...]
+        right_eye_upper = (right_eye_upper0+right_eye_upper1)/2
+
+        ud = right_eye_upper-right_eye_lower
+        ex = right_eye_upper1-right_eye_upper0
+        ex /= np.linalg.norm(ex)
+        ey = np.cross(np.array([0,0,1]),ex)
+
+        right_eye_opening = np.dot(ud,ey)  
+        if right_eye_opening<0:
+            right_eye_opening=0
 
         left_eye_contour = self.getlandmarks_pos(self.left_eye_contour_indices)
         left_eye_iris_upper = left_eye_contour[3, ...]
         left_eye_iris_lower = left_eye_contour[1, ...]
 
-        right_eye_center = self.getlandmark_pos(self.right_eye_center_index)
-        right_eyelids_contour = self.getlandmarks_pos(self.right_eyelids_indices)
-        right_eye_upper = right_eyelids_contour[3, ...]
-        right_eye_lower = right_eyelids_contour[1, ...]
-
         right_eye_contour = self.getlandmarks_pos(self.right_eye_contour_indices)
-        right_eye_iris_upper = right_eye_contour[1, ...]
-        right_eye_iris_lower = right_eye_contour[3, ...]
+        right_eye_iris_upper = right_eye_contour[3, ...]
+        right_eye_iris_lower = right_eye_contour[1, ...]
 
+        dl = np.linalg.norm(left_eye_iris_upper-left_eye_iris_lower)
+        dr = np.linalg.norm(right_eye_iris_upper-right_eye_iris_lower)
 
+        left_eye_opening /=dl
+        right_eye_opening /=dr
 
-
-        if draw_landmarks:
-
-            image = self.draw_landmark(image, left_eye_upper, (0, 0, 255),1)
-            image = self.draw_landmark(image, left_eye_lower, (0, 0, 255),1)
-
-
-            image = self.draw_landmark(image, left_eye_iris_upper, (255, 0, 0),1)
-            image = self.draw_landmark(image, left_eye_iris_lower, (255, 0, 0),1)
-
-            image = self.draw_landmark(image, right_eye_upper, (0, 0, 255),1)
-            image = self.draw_landmark(image, right_eye_lower, (0, 0, 255),1)
-
-            image = self.draw_landmark(image, right_eye_iris_upper, (255, 0, 0),1)
-            image = self.draw_landmark(image, right_eye_iris_lower, (255, 0, 0),1)            
-
-            image = self.draw_contour(image, left_eyelids_contour, (0, 0, 0),2)
-            image = self.draw_contour(image, left_eye_contour, (0, 0, 0),2)
-
-            image = self.draw_landmark(image, left_eye_center, (255, 0, 255),1)
-
-            image = self.draw_contour(image, right_eyelids_contour, (0, 0, 0),2)
-            image = self.draw_contour(image, right_eye_contour, (0, 0, 0),2)
-
-            image = self.draw_landmark(image, right_eye_center, (255, 0, 255),1)
-
-
-
-        # Compute eye opening
-        left_eye_opening = np.linalg.norm(left_eye_upper[0:2]-left_eye_lower[0:2])/np.linalg.norm(left_eye_iris_upper[0:2]-left_eye_iris_lower[0:2])
-        right_eye_opening = np.linalg.norm(right_eye_upper[0:2]-right_eye_lower[0:2])/np.linalg.norm(right_eye_iris_upper[0:2]-right_eye_iris_lower[0:2])
-
-
-        if normalize:
-            ed = self.getEyesDist()
-            left_eye_opening /= ed
-            right_eye_opening /= ed
-            th = blink_th / ed
-        else:
-            th = blink_th
 
         if detect_blinks:
             is_blink = False
             eye_opening = (left_eye_opening+right_eye_opening)/2
-            if eye_opening < th and not self.blinking:
+            if eye_opening < blink_th and not self.blinking:
                 self.blinking = True
                 is_blink = True
-            elif eye_opening > th*blinking_double_threshold_factor:
+            elif eye_opening > blink_th*blinking_double_threshold_factor:
                 self.blinking = False
 
             return left_eye_opening, right_eye_opening, is_blink
@@ -640,6 +719,18 @@ class Face():
             return left_eye_opening, right_eye_opening
 
 
+
+    def draw_eyes_landmarks(self, image:np.ndarray):
+        """Draws eyes landmarks on  the image
+
+        Args:
+            image (np.ndarray): The image to draw the landmarks on
+        """
+        self.draw_contour(image, self.getlandmarks_pos(self.left_eye_contour_indices), (255,255,255))
+        self.draw_contour(image, self.getlandmarks_pos(self.left_eyelids_indices), (0,0,0))
+
+        self.draw_contour(image, self.getlandmarks_pos(self.right_eye_contour_indices), (255,255,255))
+        self.draw_contour(image, self.getlandmarks_pos(self.right_eyelids_indices), (0,0,0))
 
 
     def process_mouth(self, image: np.ndarray, normalize:bool=False, detect_yawning: bool = False, yawning_th:float=5, yawning_double_threshold_factor:float=1.05, draw_landmarks: bool = False)->tuple:
@@ -953,6 +1044,49 @@ class Face():
         pt1 = self.npLandmarks.min(axis=0)
         pt2 = self.npLandmarks.max(axis=0)
         cv2.rectangle(image, (int(pt1[0]),int(pt1[1])), (int(pt2[0]),int(pt2[1])), color, thickness)
+
+    def get_face_outer_vertices(self):
+        """ Draws a bounding box around the face that rotates wit the face
+        Returns
+            list : list containing indices of vertices that define the boundaries of the face
+        """
+        original = [x for x in range(self.npLandmarks.shape[0])]
+        left = [x for x in range(self.npLandmarks.shape[0])]
+        for next_id in original:
+            # Find if there are points in all quadrants or not
+            q=[0 for i in range(4)]
+            p = self.npLandmarks[next_id,:]
+            for other in left:
+                if other != next_id:
+                    v = self.npLandmarks[other,:]-p
+                    if v[0]>0 and v[1]>0:
+                        q[0] = 1
+                    if v[0]<0 and v[1]>0:
+                        q[1] = 1
+                    if v[0]<0 and v[1]<0:
+                        q[2] = 1
+                    if v[0]>0 and v[1]<0:
+                        q[3] = 1
+                else:
+                    continue
+                if sum(q)==4:
+                    left.remove(next_id)
+                    break
+        return left
+
+    def draw_oriented_bounding_box(self, image:np.ndarray, color:tuple=(255,0,0), thickness:int=1):
+        """Draws a bounding box around the face that rotates wit the face
+
+        Args:
+            image (np.ndarray): The image on which we will draw the bounding box
+            color (tuple, optional): The color of the bounding box. Defaults to (255,0,0).
+            thickness (int, optional): The line thickness. Defaults to 1.
+        """
+        vertex_ids = self.get_face_outer_vertices()
+      
+        pts= np.array([self.npLandmarks[v,:2].astype(np.int) for v in vertex_ids])
+        for pt in pts:
+            cv2.circle(image, pt, 1, color, thickness)
 
     def draw_mask(self, 
                     image:np.ndarray, 
