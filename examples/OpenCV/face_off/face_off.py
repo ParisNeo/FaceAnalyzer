@@ -9,7 +9,16 @@ import numpy as np
 from pathlib import Path
 import cv2
 import time
-from FaceAnalyzer import FaceAnalyzer
+from FaceAnalyzer import FaceAnalyzer, Face
+import pickle
+
+lm_indices = list(set(Face.simplified_face_features+Face.mouth_inner_indices+Face.mouth_outer_indices)) # list(range(468)) #
+
+# open reference triangulation file
+file = Path(__file__).parent/"reference.pkl"
+with open(str(file),"rb") as f:
+    triangles = pickle.load(f)
+
 
 cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 # cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
@@ -37,10 +46,13 @@ while cap.isOpened():
         #fa.faces[1].triangles=fa.faces[0].triangles
         # Make a copy of the original image (because we will be switching twice)
         img = image.copy()
+        # Set the triangles
+        fa.faces[0].triangles=triangles
+        fa.faces[1].triangles=triangles
         # Put face0 in face 1
-        image = fa.faces[0].copyToFace(fa.faces[1], img, image, opacity = 0.8, landmark_indices=fa.faces[0].simplified_face_features)
+        image = fa.faces[0].copyToFace(fa.faces[1], img, image, opacity = 0.8, landmark_indices=lm_indices)
         # Put face 1 in face 0
-        image = fa.faces[1].copyToFace(fa.faces[0], img, image, opacity = 0.8, landmark_indices=fa.faces[0].simplified_face_features)
+        image = fa.faces[1].copyToFace(fa.faces[0], img, image, opacity = 0.8, landmark_indices=lm_indices)
     # Show the output 
     try:
         cv2.imshow('Face Off', cv2.cvtColor(image, cv2.COLOR_BGR2RGB))

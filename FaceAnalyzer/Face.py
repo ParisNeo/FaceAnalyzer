@@ -1112,8 +1112,11 @@ class Face():
             landmarks = self.npLandmarks[:, :2]
         else:
             landmarks = self.npLandmarks[landmark_indices, :2]
-
-        triangleList = self.triangles
+        try:
+            triangleList = self.triangles
+        except:
+            self.triangulate(landmark_indices)
+            triangleList = self.triangles
         size = img.shape
         r = (0, 0, size[1], size[0])
         ncolors = len(delaunay_colors)
@@ -1194,7 +1197,7 @@ class Face():
                 pass
         return dest
 
-    def copyToFace(self, dst_face, src_image, dst_image:np.ndarray, landmark_indices:list=None, opacity:float=1.0)->np.ndarray:
+    def copyToFace(self, dst_face, src_image, dst_image:np.ndarray, landmark_indices:list=None, opacity:float=1.0, min_triangle_cross:float=0.05, retriangulate:bool=False)->np.ndarray:
         """Copies the face to another image (used for face copy or face morphing)
 
         Args:
@@ -1203,6 +1206,7 @@ class Face():
             dst_image (np.ndarray): [description]
             landmark_indices (list, optional): The list of landmarks to be used (the same list used for the triangulate method that allowed the extraction of the triangles). Defaults to None.
             opacity (int, optional): the opacity level of the face (between 0 and 1)
+            retriangulate (bool): if true, then triangles will be computed avery time (needed if the source face is moving)
 
         Returns:
             np.ndarray: An image containing only the face
@@ -1239,16 +1243,27 @@ class Face():
         dst_h, dst_w, _ = dest.shape
         center = (dst_w//2,dst_h//2)
 
-        self.triangulate(landmark_indices)
-        
+        if retriangulate:
+            dst_face.triangulate(landmark_indices)
+            
         for src_tr in self.triangles:
             mask = np.zeros_like(dest)
             n_mask = np.ones_like(dest)
             try:
                 t_src = np.array(
                     [src_landmarks[src_tr[0], 0:2], src_landmarks[src_tr[1], 0:2], src_landmarks[src_tr[2], 0:2]])
+                v1 = t_src[1,:]-t_src[0,:]
+                v2 = t_src[2,:]-t_src[1,:]
+                cross = np.abs(np.cross(v1/np.linalg.norm(v1),v2/np.linalg.norm(v2)))
+                if cross<min_triangle_cross:
+                    continue
                 t_dest = np.array(
                     [dst_landmarks[src_tr[0], 0:2], dst_landmarks[src_tr[1], 0:2], dst_landmarks[src_tr[2], 0:2]])
+                v1 = t_dest[1,:]-t_dest[0,:]
+                v2 = t_dest[2,:]-t_dest[1,:]
+                cross = np.abs(np.cross(v1/np.linalg.norm(v1),v2/np.linalg.norm(v2)))
+                if cross<min_triangle_cross:
+                    continue
 
                 cv2.fillConvexPoly(mask, t_dest.astype(np.int), [1, 1, 1])
                 cv2.fillConvexPoly(n_mask, t_dest.astype(np.int), [0, 0, 0])

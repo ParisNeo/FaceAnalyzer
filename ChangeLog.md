@@ -1,3 +1,7 @@
+
+# V 1.10.0
+ - Enhanced face recognition using simple algorithm
+ - Enhanced face copying and faceoff by adding a default reference face with open mouth for offline denaulay triangulation
 # V 1.9.0
  - Added face recognition examples
  - Added face landmarks reorientation

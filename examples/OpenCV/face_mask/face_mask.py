@@ -4,6 +4,7 @@
     Description :
         A code to test FaceAnalyzer: puts a face mask on a realtime video feed. Can be used to build Halloween masks...
         Feel free to use other assets if you want.
+        In the new versions, a reference triangulation file is used. Dont forget to regenerate another one if you change the landmarks you use.
         The image file used in this code is under creative commons licence.
 <================"""
 
@@ -15,15 +16,21 @@ import time
 from PIL import Image
 from FaceAnalyzer import FaceAnalyzer, Face
 from pathlib import Path
-
+import pickle
 # Select landmark indices to be used to copy faces (if None, all landmarks will be used)
-lm_indices = Face.simplified_face_features
+lm_indices = list(set(Face.simplified_face_features+Face.mouth_inner_indices+Face.mouth_outer_indices)) # list(range(468)) #
+
+# open reference triangulation file
+file = Path(__file__).parent/"reference.pkl"
+with open(str(file),"rb") as f:
+    triangles = pickle.load(f)
+
 #lm_indices = Face.all_face_features
 
 # open an image and recover all faces inside it (here there is a single face)
 fa_mask = FaceAnalyzer.from_image(str(Path(__file__).parent/"assets/pennywize.jpg"))
 mask_face = fa_mask.faces[0]
-mask_face.triangulate(lm_indices)
+mask_face.triangles=triangles
 
 
 cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
