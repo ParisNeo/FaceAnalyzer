@@ -34,8 +34,8 @@ while cap.isOpened():
         left_eye_opening, right_eye_opening, is_blink = fa.faces[0].process_eyes(image, detect_blinks=True, blink_th=0.35) #, normalize=True
         fa.faces[0].draw_eyes_landmarks(image)
         # Get eyes positions
-        left_eye_pos  = fa.faces[0].getlandmark_pos(fa.faces[0].left_eye_center_index)
-        right_eye_pos = fa.faces[0].getlandmark_pos(fa.faces[0].right_eye_center_index)
+        left_eye_pos  = fa.faces[0].get_landmark_pos(fa.faces[0].left_eye_center_index)
+        right_eye_pos = fa.faces[0].get_landmark_pos(fa.faces[0].right_eye_center_index)
         
         # Plot eye opening on each eye
         cv2.putText(image, f"{left_eye_opening:2.2f}", (int(left_eye_pos[0]+30), int(left_eye_pos[1])), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255) if left_eye_opening>0.5 else (255,0,0),2)

@@ -1,3 +1,7 @@
+# V 1.9.0
+ - Added face recognition examples
+ - Added face landmarks reorientation
+ - Renamed some functions for consistancy (be careful)
 # V 1.8.0
  - Enhanced eye tracking
  - Added multiple examples

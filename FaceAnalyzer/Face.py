@@ -14,6 +14,7 @@ import numpy as np
 import mediapipe as mp
 import cv2
 from numpy import linalg
+from numpy.lib.type_check import imag
 from scipy.signal import butter, filtfilt
 import math
 import time
@@ -321,8 +322,8 @@ class Face():
         # Assertion to verify that the face object is ready
         assert self.ready, "Face object is not ready. There are no landmarks extracted."
 
-        p1 = self.getlandmark_pos(self.left_eye_contour_indices[2])
-        p2 = self.getlandmark_pos(self.left_eye_contour_indices[0])
+        p1 = self.get_landmark_pos(self.left_eye_contour_indices[2])
+        p2 = self.get_landmark_pos(self.left_eye_contour_indices[0])
         return np.abs(p2[0] - p1[0])
 
     def get_left_eye_height(self):
@@ -335,8 +336,8 @@ class Face():
         # Assertion to verify that the face object is ready
         assert self.ready, "Face object is not ready. There are no landmarks extracted."
 
-        p1 = self.getlandmark_pos(self.left_eye_contour_indices[3])
-        p2 = self.getlandmark_pos(self.left_eye_contour_indices[1])
+        p1 = self.get_landmark_pos(self.left_eye_contour_indices[3])
+        p2 = self.get_landmark_pos(self.left_eye_contour_indices[1])
         return np.abs(p2[1] - p1[1])
 
     def get_right_eye_width(self):
@@ -349,8 +350,8 @@ class Face():
         # Assertion to verify that the face object is ready
         assert self.ready, "Face object is not ready. There are no landmarks extracted."
 
-        p1 = self.getlandmark_pos(self.right_eye_contour_indices[2])
-        p2 = self.getlandmark_pos(self.right_eye_contour_indices[0])
+        p1 = self.get_landmark_pos(self.right_eye_contour_indices[2])
+        p2 = self.get_landmark_pos(self.right_eye_contour_indices[0])
         return np.abs(p2[0] - p1[0])
 
     def get_right_eye_height(self):
@@ -363,11 +364,11 @@ class Face():
         # Assertion to verify that the face object is ready
         assert self.ready, "Face object is not ready. There are no landmarks extracted."
 
-        p1 = self.getlandmark_pos(self.right_eye_contour_indices[3])
-        p2 = self.getlandmark_pos(self.right_eye_contour_indices[1])
+        p1 = self.get_landmark_pos(self.right_eye_contour_indices[3])
+        p2 = self.get_landmark_pos(self.right_eye_contour_indices[1])
         return np.abs(p2[1] - p1[1])
 
-    def getlandmark_pos(self, index) -> Tuple:
+    def get_landmark_pos(self, index) -> Tuple:
         """Recovers the position of a landmark from a results array
 
         Args:
@@ -384,7 +385,8 @@ class Face():
         return np.array([lm[0], lm[1], lm[2]])
 
 
-    def getlandmarks_pos(self, indices: list) -> np.ndarray:
+
+    def get_landmarks_pos(self, indices: list) -> np.ndarray:
         """Recovers the position of a landmark from a results array
 
         Args:
@@ -398,6 +400,30 @@ class Face():
         assert self.ready, "Face object is not ready. There are no landmarks extracted."
 
         return self.npLandmarks[indices,...]
+
+    def get_realigned_landmarks_pos(self, indices: list=None) -> np.ndarray:
+        """Returns a realigned version of the landmarks such that the head top is exactly in the center top and the chin is in the center  bottom
+
+        Args:
+            indices (list): Indices of the landmarks to extract. Defaults to None, which means all landmarks
+
+        Returns:
+            np.ndarray: A realigned landmars vector of form nX3
+        """
+        # Correct orientation
+        vertices = self.npLandmarks.copy()
+        up=vertices[10,:2]
+        chin=vertices[152,:2]
+        center = (up+chin)/2
+        vertical_line=up-chin
+        angle=np.arctan2(vertical_line[1],vertical_line[0]) + np.pi/2
+        R = np.array([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
+        centered = (vertices[:,:2]-center[None,:])
+        vertices[:,:2] = (centered@R)+center
+        if indices is not None:
+            return vertices[indices,:]
+        else:
+            return vertices
 
     def draw_landmark_by_index(self, image: np.ndarray, index: int, color: tuple = (255, 0, 0), radius: int = 5, thickness:int=1) -> np.ndarray:
         """Draw a landmark on an image from landmark index
@@ -418,12 +444,12 @@ class Face():
         )
 
 
-    def draw_landmarks(self, image: np.ndarray, landmarks: np.ndarray, radius:int=1, color: tuple = (255, 0, 0), thickness: int = 1, link=False) -> np.ndarray:
+    def draw_landmarks(self, image: np.ndarray, landmarks: np.ndarray=None, radius:int=1, color: tuple = (255, 0, 0), thickness: int = 1, link=False) -> np.ndarray:
         """Draw a list of landmarks on an image
 
         Args:
             image (np.ndarray): Image to draw the contour on
-            landmarks (np.ndarray): a nX3 ndarray containing the positions of the landmarks
+            landmarks (np.ndarray): a nX3 ndarray containing the positions of the landmarks. Defaults to None (use all landmarks).
             radius (int, optional): Radius of the circle to draw the landmark. Defaults to 5.
             color (tuple, optional): Color of the landmark. Defaults to (255, 0, 0).
             thickness (int, optional): Thickness of the line to draw the landmark. Defaults to 5.
@@ -432,6 +458,9 @@ class Face():
         Returns:
             np.ndarray: The image with the contour drawn on it
         """
+        if landmarks is None:
+            landmarks = self.npLandmarks
+            
         lm_l=landmarks.shape[0]
         for i in range(lm_l):
             image = cv2.circle(image, (int(landmarks[i,0]), int(landmarks[i,1])), radius,color, thickness)
@@ -490,7 +519,7 @@ class Face():
 
 
         pImage = Image.fromarray(image)
-        pos = self.getlandmark_pos(self.left_eye_center_index)[0:2]
+        pos = self.get_landmark_pos(self.left_eye_center_index)[0:2]
 
         w = int(self.get_left_eye_width())
         h = int(self.get_left_eye_height())
@@ -517,7 +546,7 @@ class Face():
         assert self.ready, "Face object is not ready. There are no landmarks extracted."
 
         pImage = Image.fromarray(image)
-        pos = self.getlandmark_pos(self.right_eye_center_index)[0:2]
+        pos = self.get_landmark_pos(self.right_eye_center_index)[0:2]
 
         w = int(self.get_right_eye_width())
         h = int(self.get_right_eye_height())
@@ -576,10 +605,10 @@ class Face():
         assert self.ready, "Face object is not ready. There are no landmarks extracted."
 
         # Left eye
-        iris = np.array(self.getlandmark_pos(Face.left_eye_center_index))
+        iris = np.array(self.get_landmark_pos(Face.left_eye_center_index))
         
-        left = np.array(self.getlandmark_pos(263))
-        right = np.array(self.getlandmark_pos(362))
+        left = np.array(self.get_landmark_pos(263))
+        right = np.array(self.get_landmark_pos(362))
 
         center = (left+right)/2
         ex = left-right
@@ -593,9 +622,9 @@ class Face():
         left_pos = np.array([np.dot((iris-center),ex)/nx,np.dot((iris-center),ey)/nx])
 
         # right
-        iris = np.array(self.getlandmark_pos(Face.right_eye_center_index))
-        left = np.array(self.getlandmark_pos(133))
-        right = np.array(self.getlandmark_pos(130))
+        iris = np.array(self.get_landmark_pos(Face.right_eye_center_index))
+        left = np.array(self.get_landmark_pos(133))
+        right = np.array(self.get_landmark_pos(130))
 
         center = (left+right)/2
         ex = left-right
@@ -638,7 +667,7 @@ class Face():
         assert self.ready, "Face object is not ready. There are no landmarks extracted."
 
 
-        pos = self.getlandmarks_pos([self.left_eye_center_index, self.right_eye_center_index])
+        pos = self.get_landmarks_pos([self.left_eye_center_index, self.right_eye_center_index])
         return np.linalg.norm(pos[1,:]-pos[0,:])
 
     def process_eyes(self, image: np.ndarray, detect_blinks: bool = False, blink_th:float=5, blinking_double_threshold_factor:float=1.05)->tuple:
@@ -660,7 +689,7 @@ class Face():
         assert self.ready, "Face object is not ready. There are no landmarks extracted."
 
         # 12 ->13  vs 374
-        left_eyelids_contour = self.getlandmarks_pos(self.left_eyelids_indices)
+        left_eyelids_contour = self.get_landmarks_pos(self.left_eyelids_indices)
         left_eye_upper0 = left_eyelids_contour[12, ...]
         left_eye_upper1 = left_eyelids_contour[13, ...]
         left_eye_lower = left_eyelids_contour[4, ...]
@@ -675,7 +704,7 @@ class Face():
         if left_eye_opening<0:
             right_eye_opening=0
 
-        right_eyelids_contour = self.getlandmarks_pos(self.right_eyelids_indices)
+        right_eyelids_contour = self.get_landmarks_pos(self.right_eyelids_indices)
         right_eye_upper0 = right_eyelids_contour[12, ...]
         right_eye_upper1 = right_eyelids_contour[13, ...]
         right_eye_lower = right_eyelids_contour[4, ...]
@@ -690,11 +719,11 @@ class Face():
         if right_eye_opening<0:
             right_eye_opening=0
 
-        left_eye_contour = self.getlandmarks_pos(self.left_eye_contour_indices)
+        left_eye_contour = self.get_landmarks_pos(self.left_eye_contour_indices)
         left_eye_iris_upper = left_eye_contour[3, ...]
         left_eye_iris_lower = left_eye_contour[1, ...]
 
-        right_eye_contour = self.getlandmarks_pos(self.right_eye_contour_indices)
+        right_eye_contour = self.get_landmarks_pos(self.right_eye_contour_indices)
         right_eye_iris_upper = right_eye_contour[3, ...]
         right_eye_iris_lower = right_eye_contour[1, ...]
 
@@ -726,11 +755,11 @@ class Face():
         Args:
             image (np.ndarray): The image to draw the landmarks on
         """
-        self.draw_contour(image, self.getlandmarks_pos(self.left_eye_contour_indices), (255,255,255))
-        self.draw_contour(image, self.getlandmarks_pos(self.left_eyelids_indices), (0,0,0))
+        self.draw_contour(image, self.get_landmarks_pos(self.left_eye_contour_indices), (255,255,255))
+        self.draw_contour(image, self.get_landmarks_pos(self.left_eyelids_indices), (0,0,0))
 
-        self.draw_contour(image, self.getlandmarks_pos(self.right_eye_contour_indices), (255,255,255))
-        self.draw_contour(image, self.getlandmarks_pos(self.right_eyelids_indices), (0,0,0))
+        self.draw_contour(image, self.get_landmarks_pos(self.right_eye_contour_indices), (255,255,255))
+        self.draw_contour(image, self.get_landmarks_pos(self.right_eyelids_indices), (0,0,0))
 
 
     def process_mouth(self, image: np.ndarray, normalize:bool=False, detect_yawning: bool = False, yawning_th:float=5, yawning_double_threshold_factor:float=1.05, draw_landmarks: bool = False)->tuple:
@@ -754,21 +783,21 @@ class Face():
         assert self.ready, "Face object is not ready. There are no landmarks extracted."
 
 
-        left_eye_center = self.getlandmark_pos(self.left_eye_center_index)
-        left_eyelids_contour = self.getlandmarks_pos(self.left_eyelids_indices)
+        left_eye_center = self.get_landmark_pos(self.left_eye_center_index)
+        left_eyelids_contour = self.get_landmarks_pos(self.left_eyelids_indices)
         left_eye_upper = left_eyelids_contour[3, ...]
         left_eye_lower = left_eyelids_contour[1, ...]
 
-        left_eye_contour = self.getlandmarks_pos(self.left_eye_contour_indices)
+        left_eye_contour = self.get_landmarks_pos(self.left_eye_contour_indices)
         left_eye_iris_upper = left_eye_contour[3, ...]
         left_eye_iris_lower = left_eye_contour[1, ...]
 
-        right_eye_center = self.getlandmark_pos(self.right_eye_center_index)
-        right_eyelids_contour = self.getlandmarks_pos(self.right_eyelids_indices)
+        right_eye_center = self.get_landmark_pos(self.right_eye_center_index)
+        right_eyelids_contour = self.get_landmarks_pos(self.right_eyelids_indices)
         right_eye_upper = right_eyelids_contour[3, ...]
         right_eye_lower = right_eyelids_contour[1, ...]
 
-        right_eye_contour = self.getlandmarks_pos(self.right_eye_contour_indices)
+        right_eye_contour = self.get_landmarks_pos(self.right_eye_contour_indices)
         right_eye_iris_upper = right_eye_contour[1, ...]
         right_eye_iris_lower = right_eye_contour[3, ...]
 
@@ -918,8 +947,31 @@ class Face():
 
         return img
 
+    def getFaceBox(self, image:np.ndarray, landmark_indices:list=None)->np.ndarray:
+        """Gets an image of the face extracted from the original image (simple box extraction which will extract some of the background)
+
+        Args:
+            image (np.ndarray): Image to extract the face from
+            src_triangles (list): The delaulay triangles indices (look at triangulate)
+            landmark_indices (list, optional): The list of landmarks to be used (the same list used for the triangulate method that allowed the extraction of the triangles). Defaults to None.
+
+        Returns:
+            np.ndarray: Face drawn on a black background (the size of the image is equal of that of the face in the original image)
+        """
+
+        # Assertion to verify that the face object is ready
+        assert self.ready, "Face object is not ready. There are no landmarks extracted."
+
+        if landmark_indices is None:
+            landmarks = self.npLandmarks[:, :2]
+        else:
+            landmarks = self.npLandmarks[landmark_indices, :2]
+        p1 = landmarks.min(axis=0)
+        p2 = landmarks.max(axis=0)
+        return image[int(p1[1]):int(p2[1]),int(p1[0]):int(p2[0])]
+
     def getFace(self, image:np.ndarray, src_triangles:list(), landmark_indices:list=None)->np.ndarray:
-        """Gets an image of the face extracted from the original image
+        """Gets an image of the face extracted from the original image (only the face with no background)
 
         Args:
             image (np.ndarray): Image to extract the face from
@@ -1033,7 +1085,7 @@ class Face():
         dst_image[int(dst_p1[1]):int(dst_p2[1]), int(dst_p1[0]):int(dst_p2[0])] = dst_crop
         return dst_image
 
-    def draw_bounding_box(self, image:np.ndarray, color:tuple=(255,0,0), thickness:int=1):
+    def draw_bounding_box(self, image:np.ndarray, color:tuple=(255,0,0), thickness:int=1, text=None):
         """Draws a bounding box around the face
 
         Args:
@@ -1044,6 +1096,8 @@ class Face():
         pt1 = self.npLandmarks.min(axis=0)
         pt2 = self.npLandmarks.max(axis=0)
         cv2.rectangle(image, (int(pt1[0]),int(pt1[1])), (int(pt2[0]),int(pt2[1])), color, thickness)
+        if text is not None:
+            cv2.putText(image, text, (int(pt1[0]),int(pt1[1]-20)),cv2.FONT_HERSHEY_SIMPLEX, 1, color, thickness)
 
     def get_face_outer_vertices(self):
         """ Draws a bounding box around the face that rotates wit the face

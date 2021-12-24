@@ -41,7 +41,7 @@ def draw_contour(image, landmarks, mulx, muly, color=(255,0,0), thickness=2):
 
 
 def draw_contours(image, face:Face, landmarks_indices, mulx, muly, color=(255,255,255)):
-    landmarks = face.getlandmarks_pos(landmarks_indices)
+    landmarks = face.get_landmarks_pos(landmarks_indices)
     face.draw_contour(image, landmarks, color)
     draw_contour(output_image, landmarks, mulx, muly, color)
 

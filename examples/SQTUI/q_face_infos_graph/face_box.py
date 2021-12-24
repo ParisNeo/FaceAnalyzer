@@ -123,7 +123,7 @@ class WinForm(QtWidgets.QWidget):
                 if pos is not None:
                     yaw, pitch, roll = faceOrientation2Euler(ori, degrees=True)
                     face.draw_bounding_box(image, color=box_colors[i%3], thickness=5)
-                    face.draw_reference_frame(image, pos, ori, origin=face.getlandmark_pos(Face.nose_tip_index))
+                    face.draw_reference_frame(image, pos, ori, origin=face.get_landmark_pos(Face.nose_tip_index))
                     # Show 
                     #ori = Face.rotationMatrixToEulerAngles(ori)
                     if i==0:
@@ -144,8 +144,8 @@ class WinForm(QtWidgets.QWidget):
                     left_pos, right_pos = face.get_eyes_position()
                     left_eye_ori = face.compose_eye_rot(left_pos, ori)
                     right_eye_ori = face.compose_eye_rot(right_pos, ori)
-                    left_eye = face.getlandmark_pos(Face.left_eye_center_index)
-                    right_eye = face.getlandmark_pos(Face.right_eye_center_index)
+                    left_eye = face.get_landmark_pos(Face.left_eye_center_index)
+                    right_eye = face.get_landmark_pos(Face.right_eye_center_index)
                     face.draw_reference_frame(image, pos, left_eye_ori, origin=left_eye)
                     face.draw_reference_frame(image, pos, right_eye_ori, origin=right_eye)
                     left_eye_yaw, left_eye_pitch, left_eye_roll = faceOrientation2Euler(left_eye_ori, degrees=True)

@@ -49,7 +49,7 @@ while cap.isOpened():
             if pos is not None:
                 yaw, pitch, roll = faceOrientation2Euler(ori, degrees=True)
                 face.draw_bounding_box(image, color=box_colors[i%3], thickness=5)
-                face.draw_reference_frame(image, pos, ori, origin=face.getlandmark_pos(Face.nose_tip_index))
+                face.draw_reference_frame(image, pos, ori, origin=face.get_landmark_pos(Face.nose_tip_index))
 
                 # Show 
                 #ori = Face.rotationMatrixToEulerAngles(ori)
@@ -68,17 +68,17 @@ while cap.isOpened():
                 print(f"left_eye_opening :{left_eye_opening}, right_eye_opening:{right_eye_opening}")
 
                 #print(f'left : {left_pos}, right : {right_pos}')
-                face.draw_landmarks(image,face.getlandmarks_pos(face.left_eyelids_indices),1)
-                face.draw_landmarks(image,face.getlandmarks_pos(face.left_eye_contour_indices),1,(0,0,0),1, link=True)
+                face.draw_landmarks(image,face.get_landmarks_pos(face.left_eyelids_indices),1)
+                face.draw_landmarks(image,face.get_landmarks_pos(face.left_eye_contour_indices),1,(0,0,0),1, link=True)
 
-                face.draw_landmarks(image,face.getlandmarks_pos(face.right_eyelids_indices),1)
-                face.draw_landmarks(image,face.getlandmarks_pos(face.right_eye_contour_indices),1,(0,0,0),1, link=True)
+                face.draw_landmarks(image,face.get_landmarks_pos(face.right_eyelids_indices),1)
+                face.draw_landmarks(image,face.get_landmarks_pos(face.right_eye_contour_indices),1,(0,0,0),1, link=True)
 
                 left_eye_ori = face.compose_eye_rot(left_pos, ori,np.array([-0.04,-0.07]),90,60)
                 right_eye_ori = face.compose_eye_rot(right_pos, ori,np.array([-0.02,-0.15]),90,60)
 
-                left_eye = face.getlandmark_pos(Face.left_eye_center_index)
-                right_eye = face.getlandmark_pos(Face.right_eye_center_index)
+                left_eye = face.get_landmark_pos(Face.left_eye_center_index)
+                right_eye = face.get_landmark_pos(Face.right_eye_center_index)
 
 
                 face.draw_reference_frame(image, pos, left_eye_ori, origin=left_eye)

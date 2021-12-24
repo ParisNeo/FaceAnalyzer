@@ -175,7 +175,7 @@ class WinForm(QtWidgets.QWidget):
         pilDrawCross(self.game_ui_img, (self.p2d+np.array(image_size)//2).astype(np.int), (200,0,0), 3)
         self.game_ui_img = pilShowErrorEllipse(self.game_ui_img, 10, self.p2d+np.array(image_size)//2, self.kalman.P,(255,0,0), 2)        
         # Just put a reference on the nose
-        #face.draw_reference_frame(image, pos, ori, origin=face.getlandmark_pos(Face.nose_tip_index))
+        #face.draw_reference_frame(image, pos, ori, origin=face.get_landmark_pos(Face.nose_tip_index))
         self.image.setImage(np.swapaxes(self.updated_image,0,1))
         self.point_pos.setImage(np.swapaxes(np.array(self.game_ui_img),0,1))
 

@@ -4,13 +4,16 @@ A python library for face detection and features extraction based on mediapipe l
 ## Introduction
 FaceAnalyzer is a library based on mediapipe library and is provided under MIT Licence. It provides an object oriented tool to play around with faces.
 It can be used to :
-1. Extract faces from an image
+0. Detect faces using the mediapipe library
+1. Extract faces from an image (either a box around the face or a face contour cut without background)
 2. Measure the face position and orientation
-3. Measure eyes openings
+3. Measure eyes openings and orientation in 3D space
 4. Detect blinks
-5. Extract the face from an image (useful for face learning applications)
+5. Get the 2D gaze position on a predefined 3D plan(s) allowing to understand what the user is looking at
 6. Compute face triangulation (builds triangular surfaces that can be used to build 3D models of the face)
 7. Copy a face from an image to another.
+8. With the help of facenet model, you can use FaceAnalyzer to recognize faces in an image (a ful example is provided under examples/OpenCV/face_recognizer_facenet)
+9. A simple face recognition algorithm based on face landmarks is also presented as an example. 
 
 ## Requirements
 This library requires :
@@ -18,7 +21,10 @@ This library requires :
 2. opencv used for drawing and image morphing
 3. scipy used for efficient delaulay triangulation
 4. numpy, as any thing that uses math
-
+5. For some examples, you may need some additional libraries:
+    - For face_recognizer_facenet (under opencv examples set) you need to install tensorflow 2.0 or later
+    - For pygame examples, install pygame
+    - For SQTUI you need to install SQTUI with either PyQT5 or PySide2
 
 ## How to install
 Just install from pipy. 
@@ -77,6 +83,18 @@ An example of how to use webcam to put a mask on a face.
 An example of how to use webcam to extract only the face (generates a black image with only the face).
 #### eyes_tracker :
 An example to show how we can get the eyes orientation in space.
+#### face_recognizer :
+An example to record and then recognize faces in a video stream using facial landmarks. This is a very fast but not robust face recognition tool. Multiple images are needed for a single person on multiple angles to perform better.
+
+The code starts by extracting landmarks. Then reorients the face so that the forehead is up and the chin is down, then normalizes the landmarks positions. Finally, distances between landmarks and their opposite landmarks are computed. This is done for each reference image, and for each frame from the video stream. Then a simple distance is computed between this vector and all the vectors from reference faces, and we take the face that is most close to the one we are watching. If the distance is higher than a threshold, the algorithm just says Unknown.
+#### face_recognizer_facenet :
+An example to record and then recognize faces in a video stream using facenet neural network.
+
+Here an embedding representation of each reference face is computed. We record multiple frames for each face and get a 128 dimensions vector for each one. The means and standard deviation are computed and saved.
+
+At inference time, each face is extracted and sent to the facenet network. We obtain an embedding. We compute the distance between this embedding and all our database. We take the closest one. If the distance is higher than a threshold, the algorithm says unknown.
+
+This is a more robust tool. Bust requires more resources. It is advised to use a GPU to have a decent framerate.
 ### Pygame
 Here you can find all examples using pygame library
 #### win_face_mouse_controller

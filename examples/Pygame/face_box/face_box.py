@@ -60,7 +60,7 @@ while Running:
             if pos is not None:
                 yaw, pitch, roll = faceOrientation2Euler(ori, degrees=True)
                 face.draw_oriented_bounding_box(image, color=box_colors[i%3], thickness=1)
-                face.draw_reference_frame(image, pos, ori, origin=face.getlandmark_pos(Face.nose_tip_index))
+                face.draw_reference_frame(image, pos, ori, origin=face.get_landmark_pos(Face.nose_tip_index))
 
 
     image = np.swapaxes(image,0,1)#cv2.flip(, 1)
