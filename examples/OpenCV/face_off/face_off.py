@@ -32,9 +32,9 @@ while cap.isOpened():
     #Now if we find two faces, we switch them
     if fa.nb_faces==2:
         # Extract face triangles from Face 1
-        fa.faces[0].triangulate(landmark_indices=fa.faces[0].simplified_face_features)
+        #fa.faces[0].triangulate(landmark_indices=fa.faces[0].simplified_face_features)
         # Set face 2 triangles as those of face1
-        fa.faces[1].triangles=fa.faces[0].triangles
+        #fa.faces[1].triangles=fa.faces[0].triangles
         # Make a copy of the original image (because we will be switching twice)
         img = image.copy()
         # Put face0 in face 1

@@ -14,7 +14,6 @@ from pathlib import Path
 import cv2
 import time
 
-from numpy.lib.type_check import imag
 from FaceAnalyzer import FaceAnalyzer
 
 import matplotlib.pyplot as plt
@@ -61,7 +60,10 @@ while cap.isOpened():
     if fa.nb_faces>0:
         face = fa.faces[0]
         # Get a realigned version of the landmarks
-        vertices = face.get_realigned_landmarks_pos()[:,:2]
+        vertices = face.get_3d_realigned_landmarks_pos()[:,:2] 
+        vertices-= vertices.min(axis=0)
+        # If you want to hide the face and only show the realigned landmarks
+        #image = np.zeros_like(image)
         face.draw_landmarks(image,vertices, color=(255,0,0))
         face.draw_landmarks(image,color=(0,0,0))
 
@@ -78,10 +80,8 @@ while cap.isOpened():
         break
     if wk & 0xFF == 115: # If s is pressed then take a snapshot
         # Let's normalize everything
-        vertices[:,0]-=vertices[:,0].min()
-        vertices[:,0]/=vertices[:,0].max()
-        vertices[:,1]-=vertices[:,1].min()
-        vertices[:,1]/=vertices[:,1].max()
+        vertices-=vertices.min(axis=0)
+        vertices/=vertices.max(axis=0)
         # Now we save it.
         name = input("name?")
         fn = faces_path/f"{name}.pkl"

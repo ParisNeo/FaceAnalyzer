@@ -23,7 +23,7 @@ from scipy.spatial import Delaunay
 from scipy.spatial.transform import Rotation as R
 
 
-from .Helpers import buildCameraMatrix, get_plane_infos, get_z_line_equation, get_plane_line_intersection
+from .Helpers import buildCameraMatrix, get_plane_infos, get_z_line_equation, get_plane_line_intersection, rotateLandmarks
 
 # Get an instance of drawing specs to be used for drawing masks on faces
 DrawingSpec =  mp.solutions.drawing_utils.DrawingSpec
@@ -68,6 +68,10 @@ class Face():
                                     474, # Left
                                     475  # Top
                                 ]
+    left_eye_left_right_indices = [
+                                    362, # Right
+                                    263, # Left
+                                ]                                
     left_eye_center_index = 473
 
     simplified_right_eyelids_indices = [
@@ -103,6 +107,10 @@ class Face():
                                     469, # left
                                     470  # top
                                 ]
+    right_eye_left_right_indices = [
+                                    130, # Right
+                                    133, # Left
+                                ]                                   
     right_eye_center_index = 468    
 
     # Mouth
@@ -196,8 +204,98 @@ class Face():
                             4,  # top
                             45,
                             220,
-                            115
-                            ]  
+                            115,
+                            49,
+                            131,
+                            134,
+                            51,
+                            5,
+                            281,
+                            363,
+                            360,
+                            279,
+                            429,
+                            420,
+                            456,
+                            248,
+                            195,
+                            3,
+                            236,
+                            198,
+                            209,
+                            217,
+                            174,
+                            196,
+                            197,
+                            419,
+                            399,
+                            437,
+                            343,
+                            412,
+                            351,
+                            6,
+                            122,
+                            188,
+                            114,
+                            245,
+                            193,
+                            168,
+                            417,
+                            465
+                            ]
+
+    forehead_indices = [
+        301,
+        298,
+        333,
+        299,
+        337,
+        151,
+        108,
+        69,
+        104,
+        68,
+        71,
+        21,
+        54,
+        103,
+        67,
+        109,
+        10,
+        338,
+        297,
+        332,
+        284,
+        251
+    ]
+    # Eye_brows
+    left_eye_brows_indices = [
+        
+        285,
+        295,
+        282,
+        283,
+        276,
+        383,
+        300,
+        293,
+        334,
+        296,
+
+    ]
+    right_eye_brows_indices = [
+
+        156,
+        46,
+        53,
+        52,
+        65,
+        55,
+        66,
+        105,
+        63,
+        70
+    ]    
     # A list of simplified facial features used to reduce computation cost of drawing and morphing faces
     simplified_face_features = [
         10, 67, 54, 162, 127, 234, 93, 132,172,150,176,148,152,377,378,365,435,323,447,454,264,389,251, 332, 338, #Oval
@@ -208,7 +306,44 @@ class Face():
         50, 207, 280, 427
     ]
 
-
+    face_oval_indices = [
+        10,
+        109,
+        67,
+        103,
+        54,
+        21,
+        162,
+        127,
+        234,
+        93,
+        132,
+        58,
+        172,
+        136,
+        150,
+        149,
+        176,
+        148,
+        152,
+        377,
+        400,
+        378,
+        379,
+        365,
+        397,
+        288,
+        361,
+        323,
+        454,
+        356,
+        389,
+        251,
+        284,
+        332,
+        297,
+        338
+    ]
 
 
     all_face_features = list(range(468))
@@ -221,13 +356,14 @@ class Face():
         """
         self.image_shape = image_shape
 
-        self.update(landmarks)
+        if type(landmarks)==np.ndarray:
+            self.npLandmarks=landmarks
+        else:
+            self.update(landmarks)
 
 
         self.blinking = False
 
-        self.face_oval = list(set(
-            list(sum(list(mp.solutions.face_mesh.FACEMESH_FACE_OVAL), ()))))
 
         self.face_contours = list(set(
             list(sum(list(mp.solutions.face_mesh.FACEMESH_CONTOURS), ()))[::3]
@@ -401,6 +537,31 @@ class Face():
 
         return self.npLandmarks[indices,...]
 
+    def get_3d_realigned_landmarks_pos(self, indices: list=None,camera_matrix: np.ndarray = None, dist_coeffs: np.ndarray = np.zeros((4, 1))) -> np.ndarray:
+        """Returns a realigned version of the landmarks such that the head is looking forwards.
+        First the face orientation is computed, then the inverse rotation is applyed so that the face is facing the camera.
+        Useful for face recognition
+
+        Args:
+            indices (list): Indices of the landmarks to extract. Defaults to None, which means all landmarks
+
+        Returns:
+            np.ndarray: A realigned landmars vector of form nX3
+        """
+        # Correct orientation
+        vertices = self.npLandmarks.copy()
+        pos, ori = self.get_head_posture(camera_matrix, dist_coeffs)
+        if pos is not None :
+            center = vertices.mean(axis=0)
+            centered = (vertices-center)
+            vertices = rotateLandmarks(centered, ori, True)
+            vertices[:,1]*=-1
+            vertices += center
+        if indices is not None:
+            return vertices[indices,:]
+        else:
+            return vertices
+
     def get_realigned_landmarks_pos(self, indices: list=None) -> np.ndarray:
         """Returns a realigned version of the landmarks such that the head top is exactly in the center top and the chin is in the center  bottom
 
@@ -424,6 +585,29 @@ class Face():
             return vertices[indices,:]
         else:
             return vertices
+
+    def get_3d_realigned_face(self, camera_matrix: np.ndarray = None, dist_coeffs: np.ndarray = np.zeros((4, 1))):
+        """Returns a face object using a realigned version of the landmarks such that the head is looking forwards.
+        First the face orientation is computed, then the inverse rotation is applyed so that the face is facing the camera.
+        Useful for face recognition
+
+        Args:
+            indices (list): Indices of the landmarks to extract. Defaults to None, which means all landmarks
+
+        Returns:
+            np.ndarray: A realigned landmars vector of form nX3
+        """
+        # Correct orientation
+        vertices = self.npLandmarks.copy()
+        pos, ori = self.get_head_posture(camera_matrix, dist_coeffs)
+        if pos is not None :
+            center = vertices.mean(axis=0)
+            centered = (vertices-center)
+            vertices = rotateLandmarks(centered, ori, True)
+            vertices[:,1]*=-1
+            vertices += center
+
+        return Face(vertices,self.image_shape)
 
     def draw_landmark_by_index(self, image: np.ndarray, index: int, color: tuple = (255, 0, 0), radius: int = 5, thickness:int=1) -> np.ndarray:
         """Draw a landmark on an image from landmark index
@@ -485,7 +669,7 @@ class Face():
             image,(int(pos[0]), int(pos[1])), radius, color, thickness
         )
 
-    def draw_contour(self, image: np.ndarray, contour: np.ndarray, color: tuple = (255, 0, 0), thickness: int = 1) -> np.ndarray:
+    def draw_contour(self, image: np.ndarray, contour: np.ndarray, color: tuple = (255, 0, 0), thickness: int = 1, isClosed:bool = True) -> np.ndarray:
         """Draw a contour on an image
 
         Args:
@@ -493,6 +677,7 @@ class Face():
             contour (np.ndarray): a nX3 ndarray containing the positions of the landmarks
             color (tuple, optional): Color of the landmark. Defaults to (255, 0, 0).
             thickness (int, optional): Thickness of the line to draw the landmark. Defaults to 5.
+            isClosed (bool, optional): If True, the contour will be closed, otherwize it will be kept open. Defaults to True 
 
 
         Returns:
@@ -500,7 +685,7 @@ class Face():
         """
 
         pts = np.array([[int(p[0]), int(p[1])] for p in contour.tolist()]).reshape((-1, 1, 2))
-        return cv2.polylines(image, [pts], True, color, thickness)
+        return cv2.polylines(image, [pts], isClosed, color, thickness)
 
     def draw_overlay_on_left_iris(self, image:np.ndarray, overlay:np.ndarray)->np.ndarray:
         """Draws an overlay image on the left iris of the face
@@ -947,7 +1132,7 @@ class Face():
 
         return img
 
-    def getFaceBox(self, image:np.ndarray, landmark_indices:list=None)->np.ndarray:
+    def getFaceBox(self, image:np.ndarray, landmark_indices:list=None, margins=(0,0,0,0))->np.ndarray:
         """Gets an image of the face extracted from the original image (simple box extraction which will extract some of the background)
 
         Args:
@@ -966,8 +1151,8 @@ class Face():
             landmarks = self.npLandmarks[:, :2]
         else:
             landmarks = self.npLandmarks[landmark_indices, :2]
-        p1 = landmarks.min(axis=0)
-        p2 = landmarks.max(axis=0)
+        p1 = landmarks.min(axis=0)-np.array(margins[0:2])
+        p2 = landmarks.max(axis=0)+np.array(margins[2:4])
         return image[int(p1[1]):int(p2[1]),int(p1[0]):int(p2[0])]
 
     def getFace(self, image:np.ndarray, src_triangles:list(), landmark_indices:list=None)->np.ndarray:
@@ -1054,6 +1239,8 @@ class Face():
         dst_h, dst_w, _ = dest.shape
         center = (dst_w//2,dst_h//2)
 
+        self.triangulate(landmark_indices)
+        
         for src_tr in self.triangles:
             mask = np.zeros_like(dest)
             n_mask = np.ones_like(dest)

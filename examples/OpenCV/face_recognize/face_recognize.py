@@ -14,14 +14,19 @@ import numpy as np
 from pathlib import Path
 import cv2
 import time
-from FaceAnalyzer import FaceAnalyzer
+from FaceAnalyzer import FaceAnalyzer, Face
 
 import matplotlib.pyplot as plt
 from pathlib import Path
 import pickle
 
+
 # Se the maximum distance between the image and the reference (more means less strict)
-max_dist = 0.7
+max_dist = 2
+
+landmark_indices = list(range(468)) # Face.left_eye_brows_indices  + Face.right_eye_brows_indices + Face.nose_indices + Face.forehead_indices + Face.left_eye_left_right_indices + Face.right_eye_left_right_indices
+# list(range(468)) # 
+
 
 # If faces path is empty then 
 faces_path = Path(__file__).parent/"faces"
@@ -48,6 +53,7 @@ box_colors=[
     (255,0,255),
     
 ]
+
 # Load faces
 known_faces=[]
 known_faces_names=[]
@@ -56,7 +62,9 @@ for file in face_files:
     with open(str(file),"rb") as f:
         faces = pickle.load(f)
     for vertices in faces:
-        distances_list = np.sum(np.abs(vertices[::-1,:]-vertices),axis=1)
+        vertices = vertices[landmark_indices,...]
+        ref = vertices[::-1,:]
+        distances_list = np.linalg.norm(ref-vertices, axis=1)
         known_faces.append(distances_list)
         known_faces_names.append(file.stem)
 
@@ -74,21 +82,20 @@ while cap.isOpened():
     if fa.nb_faces>0:
         for i in range(fa.nb_faces):
             face = fa.faces[i]
-            face.draw_landmarks(image, color=(0,0,0))
-            vertices = face.get_realigned_landmarks_pos()[:,:2]
-            face.draw_landmarks(image,vertices, color=(255,0,0))
+            face.draw_landmarks(image, face.npLandmarks[landmark_indices, ...], color=(0,0,0))
+            vertices = face.get_3d_realigned_landmarks_pos()[:,:2]
+            face.draw_landmarks(image,vertices[landmark_indices, ...], color=(255,0,0))
+            vertices-=vertices.min(axis=0)
+            vertices/=vertices.max(axis=0)
+            vertices = vertices[landmark_indices,...]
+            ref = vertices[::-1,:]
             # Let's normalize everything
-            vertices[:,0]-=vertices[:,0].min()
-            vertices[:,0]/=vertices[:,0].max()
-            vertices[:,1]-=vertices[:,1].min()
-            vertices[:,1]/=vertices[:,1].max()
-            vertices_= vertices[::-1,:]
 
-            d = np.sum(np.abs(vertices_-vertices),axis=1)
+            d = np.linalg.norm(ref-vertices, axis=1)
             nearest_distance = 1e100 # far 
             nearest = 0 # Nearest one
             for i, known_face in enumerate(known_faces):
-                distance = np.linalg.norm(d-known_face)
+                distance = np.mean((d-known_face)**2)
                 if distance<nearest_distance:
                     nearest_distance = distance
                     nearest = i

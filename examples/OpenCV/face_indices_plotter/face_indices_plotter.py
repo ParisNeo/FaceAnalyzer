@@ -32,18 +32,24 @@ box_colors=[
     (255,0,255),
     
 ]
-def draw_contour(image, landmarks, mulx, muly, color=(255,0,0), thickness=2):
-    n_lm=len(landmarks)
+def draw_contour(image, landmarks, mulx, muly, color=(255,0,0), thickness=2, isClosed=True):
+    if isClosed:
+        n_lm=len(landmarks)
+    else:
+        n_lm=len(landmarks)-1
     for i in range(n_lm):
         p= (int((landmarks[i,0]-p0[0])*mulx), int((landmarks[i,1]-p0[1])*muly))
-        p1= (int((landmarks[(i+1)%n_lm,0]-p0[0])*mulx), int((landmarks[(i+1)%n_lm,1]-p0[1])*muly))
+        if isClosed:
+            p1= (int((landmarks[(i+1)%n_lm,0]-p0[0])*mulx), int((landmarks[(i+1)%n_lm,1]-p0[1])*muly))
+        else:
+            p1= (int((landmarks[(i+1),0]-p0[0])*mulx), int((landmarks[(i+1),1]-p0[1])*muly))
         cv2.line(image, p, p1,color, thickness)
 
 
-def draw_contours(image, face:Face, landmarks_indices, mulx, muly, color=(255,255,255)):
+def draw_contours(image, face:Face, landmarks_indices, mulx, muly, color=(255,255,255),thickness=1, isClosed=True):
     landmarks = face.get_landmarks_pos(landmarks_indices)
-    face.draw_contour(image, landmarks, color)
-    draw_contour(output_image, landmarks, mulx, muly, color)
+    face.draw_contour(image, landmarks, color, thickness=thickness, isClosed=isClosed)
+    draw_contour(output_image, landmarks, mulx, muly, color, thickness=thickness, isClosed=isClosed)
 
 
 # Main Loop
@@ -53,16 +59,17 @@ while cap.isOpened():
     
     # Opencv uses BGR format while mediapipe uses RGB format. So we need to convert it to RGB before processing the image
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    output_image = np.zeros((2560*6,1440*8,3), dtype=np.uint8)
     # Process the image to extract faces and draw the masks on the face in the image
     fa.process(image)
 
     if fa.nb_faces>0:
         for i in range(fa.nb_faces):
             face = fa.faces[i]
+            output_image = face.getFaceBox(image, margins = (5,5,5,5))#
+            output_image = cv2.resize(output_image,(2560*6,1440*8))
             # Get head position and orientation compared to the reference pose (here the first frame will define the orientation 0,0,0)
             p0 = face.npLandmarks.min(axis=0)-np.array([5,5,0])
-            p1=face.npLandmarks.max(axis=0)+np.array([10,10,0])
+            p1=face.npLandmarks.max(axis=0)+np.array([5,5,0])
 
             mulx = output_image.shape[1]/(p1[0]-p0[0])
             muly = output_image.shape[0]/(p1[1]-p0[1])
@@ -75,14 +82,20 @@ while cap.isOpened():
 
             draw_contours(image, face, face.left_eye_contour_indices, mulx, muly, (0,255,255))
             draw_contours(image, face, face.left_eyelids_indices, mulx, muly, (255,0,0))
+            draw_contours(image, face, face.left_eye_brows_indices, mulx, muly, (0,0,255))
+            
 
             draw_contours(image, face, face.right_eye_contour_indices, mulx, muly, (0,255,255))
             draw_contours(image, face, face.right_eyelids_indices, mulx, muly, (255,0,0))
+            draw_contours(image, face, face.right_eye_brows_indices, mulx, muly, (0,0,255))
 
             draw_contours(image, face, face.mouth_outer_indices, mulx, muly, (0,255,255))
             draw_contours(image, face, face.mouth_inner_indices, mulx, muly, (255,0,255))
             
-            draw_contours(image, face, face.nose_indices, mulx, muly, (255,0,255))
+            draw_contours(image, face, face.nose_indices, mulx, muly, (255,0,255),isClosed=False)
+
+            draw_contours(image, face, face.face_oval_indices, mulx, muly, (255,0,255))
+            
 
 
     # Process fps
