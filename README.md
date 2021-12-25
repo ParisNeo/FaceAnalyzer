@@ -14,6 +14,7 @@ It can be used to :
 7. Copy a face from an image to another.
 8. With the help of facenet model, you can use FaceAnalyzer to recognize faces in an image (a ful example is provided under examples/OpenCV/face_recognizer_facenet)
 9. A simple face recognition algorithm based on face landmarks is also presented as an example. 
+9. A neural network based emotion recognition algorithm is integrated to the examples section at examples/OpenCv/emotion_learner. 
 
 ## Requirements
 This library requires :

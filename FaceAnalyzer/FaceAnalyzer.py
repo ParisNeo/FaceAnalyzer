@@ -83,6 +83,8 @@ class FaceAnalyzer():
     
         # Update faces
         for i, lm in enumerate(results.multi_face_landmarks):
+            if i>=len(self.faces):
+                continue
             self.faces[i].update(lm)
         for i in range(len(results.multi_face_landmarks),self.max_nb_faces):
             self.faces[i].update(None)
