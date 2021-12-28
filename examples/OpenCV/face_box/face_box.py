@@ -4,7 +4,8 @@
     Description :
         A code to test FaceAnalyzer detects a face, draws a mask around it and measure head position and orientation
 <================"""
-from FaceAnalyzer import FaceAnalyzer, Face,  DrawingSpec, buildCameraMatrix, faceOrientation2Euler
+from FaceAnalyzer import FaceAnalyzer, Face,  DrawingSpec, buildCameraMatrix
+from FaceAnalyzer.helpers.geometry.orientation import faceOrientation2Euler
 import numpy as np
 import cv2
 import time

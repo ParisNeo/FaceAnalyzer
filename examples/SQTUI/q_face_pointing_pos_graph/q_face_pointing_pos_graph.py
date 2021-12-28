@@ -8,8 +8,11 @@
 from PySide2 import QtCore
 from numpy.lib.type_check import imag
 from scipy.ndimage.measurements import label
-from FaceAnalyzer import FaceAnalyzer, Face,  DrawingSpec, buildCameraMatrix, faceOrientation2Euler
-from FaceAnalyzer.Helpers import get_z_line_equation, get_plane_infos, get_plane_line_intersection, KalmanFilter, cvDrawCross, cvOverlayImageWirthAlpha, cvShowErrorEllipse, region_3d_2_region_2d, is_point_inside_region
+from FaceAnalyzer import FaceAnalyzer, Face,  DrawingSpec, buildCameraMatrix
+from FaceAnalyzer.helpers.geometry.orientation import faceOrientation2Euler
+from FaceAnalyzer.helpers.geometry.euclidian import get_z_line_equation, get_plane_infos, get_plane_line_intersection, region_3d_2_region_2d, is_point_inside_region
+from FaceAnalyzer.helpers.ui.opencv import cvDrawCross, cvShowErrorEllipse, cvOverlayImageWirthAlpha
+from FaceAnalyzer.helpers.estimation import KalmanFilter
 import numpy as np
 import cv2
 import time

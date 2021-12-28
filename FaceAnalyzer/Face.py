@@ -23,7 +23,8 @@ from scipy.spatial import Delaunay
 from scipy.spatial.transform import Rotation as R
 
 
-from .Helpers import buildCameraMatrix, get_plane_infos, get_z_line_equation, get_plane_line_intersection, rotateLandmarks
+from .helpers.geometry.euclidian import buildCameraMatrix, get_plane_infos, get_z_line_equation, get_plane_line_intersection
+from .helpers.geometry.orientation import rotateLandmarks
 
 # Get an instance of drawing specs to be used for drawing masks on faces
 DrawingSpec =  mp.solutions.drawing_utils.DrawingSpec

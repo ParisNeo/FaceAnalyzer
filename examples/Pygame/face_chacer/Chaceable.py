@@ -3,7 +3,9 @@ import pyqtgraph as pg
 import cv2
 from pathlib import Path
 import numpy as np
-from FaceAnalyzer.Helpers import  cvOverlayImageWirthAlpha, pilOverlayImageWirthAlpha, is_point_inside_region
+from FaceAnalyzer.Helpers import  is_point_inside_region
+from FaceAnalyzer.helpers.ui.opencv import cvOverlayImageWirthAlpha
+from FaceAnalyzer.helpers.ui.pillow import pilOverlayImageWirthAlpha
 import pygame
 
 class Chaceable():

@@ -3,7 +3,8 @@ import pyqtgraph as pg
 from PIL import Image, ImageDraw
 from pathlib import Path
 import numpy as np
-from FaceAnalyzer.Helpers import  pilOverlayImageWirthAlpha, is_point_inside_region
+from FaceAnalyzer.helpers.geometry.euclidian import  is_point_inside_region
+from FaceAnalyzer.helpers.ui.pillow import pilOverlayImageWirthAlpha
 
 
 class Chaceable():

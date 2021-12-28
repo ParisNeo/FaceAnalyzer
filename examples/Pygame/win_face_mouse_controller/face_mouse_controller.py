@@ -8,18 +8,12 @@
 
 import pygame
 import win32api, win32con
-from numpy.lib.type_check import imag
-from pygame.constants import QUIT
-from scipy.ndimage.measurements import label
-from FaceAnalyzer import FaceAnalyzer, Face,  DrawingSpec, buildCameraMatrix, faceOrientation2Euler
-from FaceAnalyzer.Helpers import get_z_line_equation, get_plane_infos, get_plane_line_intersection, KalmanFilter, cvDrawCross, pilShowErrorEllipse, pilOverlayImageWirthAlpha, region_3d_2_region_2d, is_point_inside_region
+from FaceAnalyzer import FaceAnalyzer
+from FaceAnalyzer.helpers.geometry.euclidian import is_point_inside_rect, get_z_line_equation, get_plane_infos, get_plane_line_intersection
+from FaceAnalyzer.helpers.estimation import KalmanFilter
 import numpy as np
 import cv2
 import time
-from pathlib import Path
-import sys
-import pyqtgraph as pg
-from PIL import Image, ImageDraw
 import ctypes
 user32 = ctypes.windll.user32
 screensize = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
@@ -63,6 +57,17 @@ t = time.time()
 # By default clicking is deactivated (you need to close your eyes for 2s at least to activate eye clicking)
 click = False
 waiting = False
+
+# white color
+color = (255,255,255)
+  
+# light shade of the button
+color_light = (170,170,170)
+  
+# dark shade of the button
+color_dark = (100,100,100)
+
+
 #  Main loop
 while Running:
     screen.fill((0,0,0))
@@ -132,9 +137,14 @@ while Running:
                 if click and is_blink and x is not None:
                     win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN,x,y,0,0)
                     win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP,x,y,0,0)
-    my_surface = pygame.pixelcopy.make_surface(cv2.cvtColor(np.swapaxes(image,0,1).astype(np.uint8),cv2.COLOR_BGR2RGB))
-    screen.blit(my_surface,(0,0))
 
+    my_surface = pygame.pixelcopy.make_surface(np.swapaxes(image,0,1).astype(np.uint8))
+    screen.blit(my_surface,(50,0))
+    mouse = pygame.mouse.get_pos()
+    if is_point_inside_rect((mouse[0],mouse[1]),(300,500,500,540)):
+        pygame.draw.rect(screen,color_light,[300,500,200,40])
+    else:
+        pygame.draw.rect(screen,color_dark,[300,500,200,40])
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             print("Done")
