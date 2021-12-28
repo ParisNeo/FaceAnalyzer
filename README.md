@@ -80,6 +80,8 @@ An example of how to extract faces from a video (using webcam) then process eyes
 An example of how to use webcam to switch faces between two persons.
 #### face_mask :
 An example of how to use webcam to put a mask on a face.
+#### animate_image :
+An example of how to use webcam to animate a still face using the user's face motion. Just put an image file containing a face in the assets subfolder and select the file in the parameters and you're good to go.
 #### extract_face :
 An example of how to use webcam to extract only the face (generates a black image with only the face).
 #### eyes_tracker :

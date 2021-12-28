@@ -17,15 +17,30 @@ from PIL import Image
 from FaceAnalyzer import FaceAnalyzer, Face
 from pathlib import Path
 import pickle
-# Select landmark indices to be used to copy faces (if None, all landmarks will be used)
-lm_indices = list(set(Face.simplified_face_features+Face.mouth_inner_indices+Face.mouth_outer_indices)) # list(range(468)) #
+# Parameters
+use_simplified_face = True  # If true then the simplified faster version of the face landmarks will be used instead of the full more accurate but slower version
+seemless_cloning=False #If true, seemless cloning will be used to blend the mask onto the face
+
+# Select landmarks
+if use_simplified_face:
+    # Simplified facial features (fast)
+    lm_indices = list(set(
+                        Face.simplified_face_features+
+                        Face.mouth_inner_indices+
+                        Face.mouth_outer_indices+
+                        Face.left_eyelids_indices+
+                        Face.right_eyelids_indices+
+                        Face.left_eye_contour_indices+
+                        Face.right_eye_contour_indices)) # list(range(468)) #
+else:
+    # Full face (Slower)
+    lm_indices = list(range(478))
 
 # open reference triangulation file
 file = Path(__file__).parent/"reference.pkl"
 with open(str(file),"rb") as f:
     triangles = pickle.load(f)
 
-#lm_indices = Face.all_face_features
 
 # open an image and recover all faces inside it (here there is a single face)
 fa_mask = FaceAnalyzer.from_image(str(Path(__file__).parent/"assets/pennywize.jpg"))
@@ -40,27 +55,40 @@ cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 # Build a window
 cv2.namedWindow('Face Mask', flags=cv2.WINDOW_NORMAL)
 cv2.resizeWindow('Face Mask', (640,480))
-
 # Smask_face between viewing the original image with the face triangles on, or applying the mask to the video stream
-view_original = False
+view_original = True
+if view_original:
+    cv2.namedWindow('Original', flags=cv2.WINDOW_NORMAL)
+    cv2.resizeWindow('Original', (640,480))
+
 # Plot
 start_time = time.time_ns()
 fa = FaceAnalyzer(max_nb_faces=3)
 for face in fa.faces:
     face.triangles = mask_face.triangles
+
+if view_original:
+    image = fa_mask.image.copy()
+    mask_face.draw_delaunay(image, landmark_indices=lm_indices)
+    cv2.imshow('Original', cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+
 while cap.isOpened():
     success, image = cap.read()
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    if view_original:
-        image = fa_mask.image.copy()
-        mask_face.draw_delaunay(image, landmark_indices=lm_indices)
-    else:
-        files = []
-        fa.process(image)
-        if fa.found_faces:
-            for i, face in enumerate(fa.faces):
-                if face.ready:                    
-                    image = mask_face.copyToFace(face, fa_mask.image, image, opacity = 1, landmark_indices=lm_indices)
+    files = []
+    fa.process(image)
+    if fa.found_faces:
+        for i, face in enumerate(fa.faces):
+            if face.ready:                    
+                image = mask_face.copyToFace(
+                    face, 
+                    fa_mask.image, 
+                    image, 
+                    opacity = 1, 
+                    landmark_indices=lm_indices, 
+                    min_output_triangle_cross=0.01, 
+                    min_input_triangle_cross=20,
+                    seemless_cloning=seemless_cloning)
     try:
         cv2.imshow('Face Mask', cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
     except Exception as ex:

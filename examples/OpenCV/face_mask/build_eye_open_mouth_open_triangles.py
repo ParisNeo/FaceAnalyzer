@@ -17,9 +17,23 @@ from FaceAnalyzer import FaceAnalyzer, Face
 from pathlib import Path
 import pickle
 
-# Select landmark indices to be used to copy faces (if None, all landmarks will be used)
-lm_indices = list(set(Face.simplified_face_features+Face.mouth_inner_indices+Face.mouth_outer_indices)) # list(range(468)) #
-#lm_indices = Face.all_face_features
+# Parameters
+use_simplified_face = True  # If true then the simplified faster version of the face landmarks will be used instead of the full more accurate but slower version
+
+# Select landmarks
+if use_simplified_face:
+    # Simplified facial features (fast)
+    lm_indices = list(set(
+                        Face.simplified_face_features+
+                        Face.mouth_inner_indices+
+                        Face.mouth_outer_indices+
+                        Face.left_eyelids_indices+
+                        Face.right_eyelids_indices+
+                        Face.left_eye_contour_indices+
+                        Face.right_eye_contour_indices)) # list(range(468)) #
+else:
+    # Full face (Slower)
+    lm_indices = list(range(478))
 
 # open an image and recover all faces inside it (here there is a single face)
 fa_mask = FaceAnalyzer.from_image(str(Path(__file__).parent/"assets/mlk.jpg"))

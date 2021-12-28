@@ -987,8 +987,6 @@ class Face():
         right_eye_iris_lower = right_eye_contour[3, ...]
 
 
-
-
         if draw_landmarks:
 
             image = self.draw_landmark(image, left_eye_upper, (0, 0, 255),1)
@@ -1187,22 +1185,33 @@ class Face():
         dest = np.zeros_like(croped)
         for tr in src_triangles:
             mask = np.zeros_like(dest)
-            n_mask = np.ones_like(dest)
             try:
                 t_dest = np.array([landmarks[tr[0], 0:2], landmarks[tr[1], 0:2], landmarks[tr[2], 0:2]])
                 cv2.fillConvexPoly(mask, t_dest.astype(np.int), [1, 1, 1])
-                cv2.fillConvexPoly(n_mask, t_dest.astype(np.int), [0, 0, 0])
-                dest = cv2.multiply(dest, n_mask) + cv2.multiply(mask, croped)
+                mask=mask.astype(np.bool)
+                dest = dest*~mask + mask* croped
             except Exception as ex:
                 pass
         return dest
 
-    def copyToFace(self, dst_face, src_image, dst_image:np.ndarray, landmark_indices:list=None, opacity:float=1.0, min_triangle_cross:float=0.05, retriangulate:bool=False)->np.ndarray:
+    def copyToFace(
+                    self, 
+                    dst_face, 
+                    src_image:np.ndarray, 
+                    dst_image:np.ndarray, 
+                    landmark_indices:list=None, 
+                    opacity:float=1.0, 
+                    min_input_triangle_cross:float=20, 
+                    min_output_triangle_cross:float=1, 
+                    retriangulate:bool=False,
+                    seemless_cloning:bool=False,
+                    empty_fill_color:Tuple=None
+                    )->np.ndarray:
         """Copies the face to another image (used for face copy or face morphing)
 
         Args:
             dst_face (Face): A face object describing the face in the destination image (triangulate function should have been called on this object with the same landmark_indices argument)
-            src_image ([type]): [description]
+            src_image (np.ndarray): [description]
             dst_image (np.ndarray): [description]
             landmark_indices (list, optional): The list of landmarks to be used (the same list used for the triangulate method that allowed the extraction of the triangles). Defaults to None.
             opacity (int, optional): the opacity level of the face (between 0 and 1)
@@ -1223,68 +1232,143 @@ class Face():
             src_landmarks = self.npLandmarks[landmark_indices, :2]
             dst_landmarks = dst_face.npLandmarks[landmark_indices, :2]
 
+        # Clip landmarks to image size
+        src_landmarks = np.clip(src_landmarks,np.array([0,0]),np.array([src_image.shape[1],src_image.shape[0]])).astype(np.int)
+        dst_landmarks = np.clip(dst_landmarks,np.array([0,0]),np.array([src_image.shape[1],src_image.shape[0]])).astype(np.int)
+
+
         # Crop images
         src_p1 = src_landmarks.min(axis=0)
         src_p2 = src_landmarks.max(axis=0)
 
         src_landmarks -= src_p1
-        src_crop = src_image[int(src_p1[1]):int(
-            src_p2[1]), int(src_p1[0]):int(src_p2[0])]
+        src_crop = src_image[src_p1[1]:src_p2[1], src_p1[0]:src_p2[0]]
 
         dst_p1 = dst_landmarks.min(axis=0)
         dst_p2 = dst_landmarks.max(axis=0)
 
         dst_landmarks -= dst_p1
-        dst_crop = dst_image[int(dst_p1[1]):int(
-            dst_p2[1]), int(dst_p1[0]):int(dst_p2[0])]
+        dst_crop = dst_image[dst_p1[1]:dst_p2[1], dst_p1[0]:dst_p2[0]]
 
         # Prepare empty image
-        dest = np.zeros((int(dst_p2[1])-int(dst_p1[1]),int(dst_p2[0])-int(dst_p1[0]),3))
+        dest = dst_crop.copy()# np.zeros_like(dst_crop)
+
+
         dst_h, dst_w, _ = dest.shape
         center = (dst_w//2,dst_h//2)
 
         if retriangulate:
             dst_face.triangulate(landmark_indices)
-            
+
+        final_mask=np.zeros_like(dst_crop,dtype=np.uint8)
+        # Prepare masks
         for src_tr in self.triangles:
-            mask = np.zeros_like(dest)
-            n_mask = np.ones_like(dest)
-            try:
+            #try:
+                fill=False
+                # Get source triangles
                 t_src = np.array(
-                    [src_landmarks[src_tr[0], 0:2], src_landmarks[src_tr[1], 0:2], src_landmarks[src_tr[2], 0:2]])
+                    [
+                        src_landmarks[src_tr[0], 0:2], 
+                        src_landmarks[src_tr[1], 0:2], 
+                        src_landmarks[src_tr[2], 0:2]
+                    ])
+                # Get destination triangles
+                t_dest = np.array(
+                    [
+                        dst_landmarks[src_tr[0], 0:2], 
+                        dst_landmarks[src_tr[1], 0:2], 
+                        dst_landmarks[src_tr[2], 0:2]
+                    ])
+                
+                # Test triangles are not empty
                 v1 = t_src[1,:]-t_src[0,:]
                 v2 = t_src[2,:]-t_src[1,:]
-                cross = np.abs(np.cross(v1/np.linalg.norm(v1),v2/np.linalg.norm(v2)))
-                if cross<min_triangle_cross:
-                    continue
-                t_dest = np.array(
-                    [dst_landmarks[src_tr[0], 0:2], dst_landmarks[src_tr[1], 0:2], dst_landmarks[src_tr[2], 0:2]])
+                cross = np.abs(np.cross(v1,v2))
+                if cross<min_input_triangle_cross:
+                    if empty_fill_color is not None:
+                        fill=True
+                    else:
+                        continue
                 v1 = t_dest[1,:]-t_dest[0,:]
                 v2 = t_dest[2,:]-t_dest[1,:]
-                cross = np.abs(np.cross(v1/np.linalg.norm(v1),v2/np.linalg.norm(v2)))
-                if cross<min_triangle_cross:
+                cross = np.abs(np.cross(v1,v2))
+                if cross<min_output_triangle_cross:
                     continue
+                
 
-                cv2.fillConvexPoly(mask, t_dest.astype(np.int), [1, 1, 1])
-                cv2.fillConvexPoly(n_mask, t_dest.astype(np.int), [0, 0, 0])
+                #Crop more to just get the triangle zone
+                """
+                """
+                src_min_pos = np.clip(t_src.min(axis=0)-np.array([2,2]),np.array([0,0]),np.array([src_image.shape[1],src_image.shape[0]]))
+                src_max_pos = np.clip(t_src.max(axis=0)+np.array([2,2]),np.array([0,0]),np.array([src_image.shape[1],src_image.shape[0]]))
 
+                dst_min_pos = np.clip(t_dest.min(axis=0)-np.array([2,2]),np.array([0,0]),np.array([dest.shape[1],dest.shape[0]]))
+                dst_max_pos = np.clip(t_dest.max(axis=0)+np.array([2,2]),np.array([0,0]),np.array([dest.shape[1],dest.shape[0]]))
+                
+                t_src -= src_min_pos
+                t_dest -= dst_min_pos
+
+                #Find transformation matrix from source triangle to destination triangle
                 M = cv2.getAffineTransform(
                     t_src.astype(np.float32),
                     t_dest.astype(np.float32)
                 )
-                warped = cv2.warpAffine(src_crop,  # src_image,
-                                        M,
-                                        (dst_w, dst_h)
-                                        )
-                dest = cv2.multiply(dest, n_mask) + cv2.multiply(np.float64(warped), mask)
-            except Exception as ex:
-                pass
-        mask = cv2.threshold(dest.astype(np.uint8), 1, opacity*255, cv2.THRESH_BINARY)[1]
-        try:
-            dst_crop = cv2.seamlessClone(dest.astype(np.uint8), dst_crop, mask, (int(center[0]),int(center[1])), cv2.NORMAL_CLONE)
-        except:
-            pass
-        dst_image[int(dst_p1[1]):int(dst_p2[1]), int(dst_p1[0]):int(dst_p2[0])] = dst_crop
+
+                src_w,src_h = src_max_pos[0]-src_min_pos[0], src_max_pos[1]-src_min_pos[1]
+                dest_w,dest_h = dst_max_pos[0]-dst_min_pos[0], dst_max_pos[1]-dst_min_pos[1]
+
+                # If the cropped size is zero, go to next triangle
+                if src_w<=1 or src_h<=1 or dest_w<=1 or dest_h<=1:
+                    continue
+
+                if fill:
+                    stem = np.ones((src_max_pos[1]-src_min_pos[1],
+                                    src_max_pos[0]-src_min_pos[0]))
+                    warped_t = cv2.warpAffine(np.dstack(
+                                                    [
+                                                        (stem*empty_fill_color[0])[:,:,None],
+                                                        (stem*empty_fill_color[1])[:,:,None],
+                                                        (stem*empty_fill_color[2])[:,:,None]
+                                                    ]),
+                                            M,
+                                            (   dest_w,dest_h
+                                            ),flags=cv2.INTER_LINEAR 
+                                            )
+                else:
+                    warped_t = cv2.warpAffine(src_crop[ src_min_pos[1]:src_max_pos[1],
+                                                        src_min_pos[0]:src_max_pos[0]], 
+                                            M,
+                                            (   dest_w,dest_h
+                                            ),flags=cv2.INTER_LINEAR
+                                            )
+                #Build masks
+                mask = np.zeros_like(warped_t)
+                # Prepare masks
+                cv2.fillConvexPoly(mask, t_dest, [1, 1, 1])
+                mask = mask.astype(np.bool)
+
+                # Build global mask
+                final_mask[dst_min_pos[1]:dst_max_pos[1],dst_min_pos[0]:dst_max_pos[0],:] = final_mask[dst_min_pos[1]:dst_max_pos[1],dst_min_pos[0]:dst_max_pos[0],:]*~mask+ mask*255
+
+                # Copy warped triangle to destination
+                warped_masked = warped_t* mask # cv2.dilate(warped_t* mask,np.ones((2,2)))* mask
+                dest_masked = dest[dst_min_pos[1]:dst_max_pos[1],dst_min_pos[0]:dst_max_pos[0],:]* ~mask#cv2.dilate(dest[dst_min_pos[1]:dst_max_pos[1],dst_min_pos[0]:dst_max_pos[0],:]* ~mask,np.ones((2,2)))* ~mask
+                dest[dst_min_pos[1]:dst_max_pos[1],dst_min_pos[0]:dst_max_pos[0],:] =  dest_masked + warped_masked
+
+            #except Exception as ex:
+            #    pass
+
+        if seemless_cloning:
+            dst_crop = cv2.seamlessClone(dest, dst_crop, final_mask, (int(center[0]),int(center[1])), cv2.NORMAL_CLONE)
+        else:
+            final_mask= final_mask.astype(np.bool)
+            dst_crop = dest*final_mask + dst_crop*~final_mask
+        #dst_crop = final_mask 
+        dst_image[
+            int(dst_p1[1]):int(dst_p2[1]),
+            int(dst_p1[0]):int(dst_p2[0]),
+            :
+            ] = dst_crop
         return dst_image
 
     def draw_bounding_box(self, image:np.ndarray, color:tuple=(255,0,0), thickness:int=1, text=None):

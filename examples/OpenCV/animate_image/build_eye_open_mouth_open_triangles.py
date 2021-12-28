@@ -16,10 +16,23 @@ from PIL import Image
 from FaceAnalyzer import FaceAnalyzer, Face
 from pathlib import Path
 import pickle
+# Parameters
+use_simplified_face = True  # If true then the simplified faster version of the face landmarks will be used instead of the full more accurate but slower version
 
-# Select landmark indices to be used to copy faces (if None, all landmarks will be used)
-lm_indices = list(set(Face.simplified_face_features+Face.mouth_inner_indices+Face.mouth_outer_indices)) # list(range(468)) #
-#lm_indices = Face.all_face_features
+# Select landmarks
+if use_simplified_face:
+    # Simplified facial features (fast)
+    lm_indices = list(set(
+                        Face.simplified_face_features+
+                        Face.mouth_inner_indices+
+                        Face.mouth_outer_indices+
+                        Face.left_eyelids_indices+
+                        Face.right_eyelids_indices+
+                        Face.left_eye_contour_indices+
+                        Face.right_eye_contour_indices)) # list(range(468)) #
+else:
+    # Full face (Slower)
+    lm_indices = list(range(478))
 
 # open an image and recover all faces inside it (here there is a single face)
 fa_mask = FaceAnalyzer.from_image(str(Path(__file__).parent/"assets/mlk.jpg"))
@@ -47,8 +60,11 @@ while cap.isOpened():
     if fa.found_faces:
         for i, face in enumerate(fa.faces):
             if face.ready:
-                triangles = face.triangulate(lm_indices)
-                face.draw_delaunay(image, lm_indices)
+                n_lm= face.npLandmarks.shape[0]
+                extra_indices = [n_lm,n_lm+1,n_lm+2,n_lm+3]
+                face.npLandmarks=np.vstack([face.npLandmarks,np.array([[0,0,0],[0,image.shape[0],0],[image.shape[1],image.shape[0],0],[image.shape[1],0,0]])])
+                triangles = face.triangulate(lm_indices+extra_indices)
+                face.draw_delaunay(image, lm_indices+extra_indices)
     try:
         cv2.imshow('Face Mask', cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
     except Exception as ex:
