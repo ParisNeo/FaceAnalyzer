@@ -15,6 +15,9 @@ import numpy as np
 import cv2
 import time
 import ctypes
+from pathlib import Path
+
+from FaceAnalyzer.helpers.ui.pygame import Button
 user32 = ctypes.windll.user32
 screensize = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
 
@@ -67,6 +70,47 @@ color_light = (170,170,170)
 # dark shade of the button
 color_dark = (100,100,100)
 
+# Simple button 
+
+
+def template_button(title, rect):
+    not_pressed_image = str(Path(__file__).parent/"assets/buttons/not_pressed.png").replace("\\","/")
+    hovered_image = str(Path(__file__).parent/"assets/buttons/hovered.png").replace("\\","/")
+    pressed_image = str(Path(__file__).parent/"assets/buttons/pressed.png").replace("\\","/")
+    
+    # build button
+    return Button(
+        title,
+        rect,
+    style="""
+        btn.normal{
+            color:white;
+    """+
+    f"""
+            background-image:url('file:///{not_pressed_image}')
+    """+
+    """
+        }
+        btn.hover{
+            color:red;
+    """+
+    f"""
+            background-image:url('file:///{hovered_image}')
+    """+
+    """
+        }
+        btn.pressed{
+            color:red;
+    """+
+    f"""
+            background-image:url('file:///{pressed_image}')
+    """+
+    """
+        }
+    """)
+
+btn_calibrate=template_button("Calibrate",(10,560,100,40))
+btn_activate=template_button("Activate",(110,560,100,40))
 
 #  Main loop
 while Running:
@@ -140,14 +184,14 @@ while Running:
 
     my_surface = pygame.pixelcopy.make_surface(np.swapaxes(image,0,1).astype(np.uint8))
     screen.blit(my_surface,(50,0))
+    btn_calibrate.paint(screen)
+    btn_activate.paint(screen)
     mouse = pygame.mouse.get_pos()
-    if is_point_inside_rect((mouse[0],mouse[1]),(300,500,500,540)):
-        pygame.draw.rect(screen,color_light,[300,500,200,40])
-    else:
-        pygame.draw.rect(screen,color_dark,[300,500,200,40])
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             print("Done")
             Running=False
+    btn_calibrate.handle_events(event)
+    btn_activate.handle_events(event)
     # Update UI
     pygame.display.update()
