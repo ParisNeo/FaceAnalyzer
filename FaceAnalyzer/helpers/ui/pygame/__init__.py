@@ -92,6 +92,10 @@ class Widget():
                             style.bg_color = v
 
                     # Text stuff
+                    if property.name=='x-margin':
+                        style.x_margin = int(property.value)
+                    if property.name=='y-margin':
+                        style.y_margin = int(property.value)
                     if property.name=='align':
                         style.align = property.value
                     if property.name == 'font-size':
@@ -260,3 +264,49 @@ class Button(Widget):
                 self.pressed=False
             self.toggled=False
 
+class ProgressBar(Widget):
+    def __init__(
+                self, 
+                rect: tuple = [0, 0, 100, 50], 
+                style: str = "brogressbar.outer{background:#ffffff;}\nbrogressbar.inner{background:#ffffff;}", 
+                value=0
+            ):
+        """Builds a progressbar widget
+
+        Args:
+            rect (tuple, optional): Rectangle where to put the progressbar. Defaults to [0, 0, 100, 50].
+            style (str, optional): [description]. Defaults to "brogressbar.outer{background:#ffffff;}\nbrogressbar.inner{background:#ffffff;}".
+            value (int, optional): [description]. Defaults to 0.
+        """
+        super().__init__(
+                            rect=rect, 
+                            style=style, 
+                            extra_styles={
+                                "brogressbar.outer":WidgetStyle(),
+                                "brogressbar.inner":WidgetStyle(),
+                            }
+                        )
+        self.value=value
+
+    def setValue(self, value):
+        self.value = value            
+
+    def paint(self, screen):
+        """Paints the button
+
+        Args:
+            screen ([type]): The screen on which to blit
+        """
+                          
+        outer_style = self.styles["brogressbar.outer"]
+        inner_style = self.styles["brogressbar.inner"]
+        if outer_style.img is None:
+            pygame.draw.rect(screen,outer_style.bg_color,self.rect)
+        else:
+            screen.blit(pygame.transform.scale(outer_style.img, (self.rect[2], self.rect[3])), (self.rect[0],self.rect[1]))
+        
+        if inner_style.img is None:
+            pygame.draw.rect(screen,inner_style.bg_color,[self.rect[0], self.rect[1], self.rect[2]*self.value, self.rect[3]])
+        else:
+            screen.blit(pygame.transform.scale(inner_style.img, (self.rect[2], self.rect[3])), (self.rect[0],self.rect[1]))
+        

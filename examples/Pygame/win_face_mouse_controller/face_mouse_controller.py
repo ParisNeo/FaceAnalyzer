@@ -17,9 +17,13 @@ import time
 import ctypes
 from pathlib import Path
 
-from FaceAnalyzer.helpers.ui.pygame import Widget, Button, Label
+from FaceAnalyzer.helpers.ui.pygame import Widget, Button, Label, ProgressBar
+from pygame.mixer import Sound, get_init, pre_init
+import array
+import pickle
 
-global click, is_calibrating
+global click, is_calibrating, calibration_step, calibration_buffer, is_active
+
 
 
 user32 = ctypes.windll.user32
@@ -41,6 +45,24 @@ use_eyes =False
 
 # If true, the mouse will not be controlled, you will only need to look first at 0,0 then at w,h points and get the values that would be printed down
 is_calibrating = False
+calibration_step=0
+calibration_buffer = [[],[]]
+is_active = False
+
+fn = Path(__file__).parent/"calib.pkl"
+
+if fn.exists():
+    with open(str(fn),"rb") as f:
+        v = pickle.load(f) 
+        p00 = v["P00"]
+        p11 = v["P11"]
+else:
+    if use_eyes:
+        p00 = [-114.35650583,  -44.76599764]
+        p11 = [84.01429488, 98.52181435]
+    else:
+        p00 = [-176.01920468,  -46.66348955] 
+        p11 = [250.42943629, 154.68334261]
 
 box_colors=[
     (255,0,0),
@@ -74,6 +96,31 @@ color_light = (170,170,170)
 # dark shade of the button
 color_dark = (100,100,100)
 
+
+
+class Note(Sound):
+    """A note class (Code borrowed from : https://gist.github.com/ohsqueezy/6540433) 
+
+    """
+    def __init__(self, frequency, volume=.1):
+        self.frequency = frequency
+        Sound.__init__(self, self.build_samples())
+        self.set_volume(volume)
+
+    def build_samples(self):
+        period = int(round(get_init()[0] / self.frequency))
+        samples = array.array("h", [0] * period)
+        amplitude = 2 ** (abs(get_init()[1]) - 1) - 1
+        for time in range(period):
+            if time < period / 2:
+                samples[time] = amplitude
+            else:
+                samples[time] = -amplitude
+        return samples
+
+# beep to 
+beep = Note(440)
+
 def template_statusbar(rect):
     label_image = str(Path(__file__).parent/"assets/buttons/label.png").replace("\\","/")
     
@@ -102,6 +149,7 @@ def template_label(title,rect):
     style="""
         label{
             align:left;
+            x-margin:10;
             color:black;
     """+
     f"""
@@ -148,16 +196,47 @@ def template_button(title, rect, is_togle=False, clicked_event_handler=None):
     """,
     is_toggle=is_togle,clicked_event_handler=clicked_event_handler)
 
-def activate():
-    global click
-    click=btn_activate.pressed
-    lbl_info.setText(f"Eye blinking status : {click}")
-def calibrate():
-    global is_calibrating
+def template_progressbar(rect):
     
-btn_calibrate = template_button("Calibrate",(10,560,100,40),clicked_event_handler=calibrate)
-btn_activate = template_button("Activate",(110,560,100,40), is_togle=True,clicked_event_handler=activate)
-lbl_info = template_label("Eye blinking status : False",(210,560,590,40))
+    # build button
+    return ProgressBar(
+        rect,
+    style="""
+        brogressbar.outer{
+            color:white;
+            background:gray;
+        }
+        brogressbar.inner{
+            color:white;
+            background:red;
+        }
+    """
+    )
+
+def activate():
+    global click, is_active
+    is_active = btn_activate.pressed
+    click = btn_activate.pressed
+    lbl_info.setText(f"Eye blinking status : {click}")
+
+def calibrate():
+    global is_calibrating, calibration_step, calibration_buffer
+    if not is_calibrating:
+        is_calibrating=True
+        calibration_step=0
+        calibration_buffer = [[],[]]
+        btn_calibrate.setText("Next")
+    elif calibration_step==0 or calibration_step==2:
+        calibration_step+=1
+        calibration_buffer = [[],[]]
+
+    
+btn_calibrate   = template_button("Calibrate",(10,560,100,40),clicked_event_handler=calibrate)
+btn_activate    = template_button("Activate",(110,560,100,40), is_togle=True,clicked_event_handler=activate)
+lbl_info        = template_label("Eye blinking status : False",(0,520,800,40))
+bg              = template_label("",(0,560,800,40))
+pb_advance      = template_progressbar((500,575,290,10))
+
 
 #  Main loop
 while Running:
@@ -193,7 +272,11 @@ while Running:
                     else:
                         if not waiting:
                             if time.time()-t>2: # 2 seconds to consider it a click
-                                click=not click      
+                                click=not click
+
+                                beep.play()
+                                time.sleep(0.1)
+                                beep.stop()  
                                 waiting = True                
                 
                 # =========================================================================================
@@ -212,17 +295,46 @@ while Running:
                     # Look at the bottom right of the screen and  save the p2d value for that position
                     # 0,0 -> [-176.01920468  -46.66348955] 
                     # w,h -> [250.42943629 154.68334261]
-                    if use_eyes:
-                        p00 = [-114.35650583,  -44.76599764]
-                        p11 = [84.01429488, 98.52181435]
-                    else:
-                        p00 = [-176.01920468,  -46.66348955] 
-                        p11 = [250.42943629, 154.68334261]
+
                     x = int((p2d[0]-p00[0])*screensize[0]/(p11[0]-p00[0]))
                     y = int((p2d[1]-p00[1])*screensize[1]/(p11[1]-p00[1]))
                     if is_calibrating:
-                        print(p2d) 
-                    else:
+                        if calibration_step==0:
+                            lbl_info.setText(f"Look at Left Top corner : {p2d} <STAND BY>")
+                        elif calibration_step==1:
+                            lbl_info.setText(f"Look at Left Top corner : {p2d} <RECORDING>")
+                            calibration_buffer[0].append(p2d[0])
+                            calibration_buffer[1].append(p2d[1])
+                            pb_advance.setValue(len(calibration_buffer[0])/100)
+                            if len(calibration_buffer[0])==100:
+                                p00 = [np.mean(calibration_buffer[0]), np.mean(calibration_buffer[1])]
+                                calibration_step=2
+                                beep.play(-1)
+                                time.sleep(0.5)
+                                beep.stop()
+                        elif calibration_step==2:
+                            lbl_info.setText(f"Look at Right Bottom corner : {p2d}<STAND BY>")
+                        elif calibration_step==3:
+                            lbl_info.setText(f"Look at Right Bottom corner : {p2d}<RECORDING>")
+                            calibration_buffer[0].append(p2d[0])
+                            calibration_buffer[1].append(p2d[1])
+                            pb_advance.setValue(len(calibration_buffer[0])/100)
+                            if len(calibration_buffer[0])==100:
+                                p11 = [np.mean(calibration_buffer[0]), np.mean(calibration_buffer[1])]
+                                calibration_step=0
+                                is_calibrating=False
+                                beep.play(-1)
+                                time.sleep(0.5)
+                                beep.stop()
+                                lbl_info.setText(f"<Done>")
+                                btn_calibrate.setText("Calibrate")
+                                fn = Path(__file__).parent/"calib.pkl"
+                                with open(str(fn),"wb") as f:
+                                    pickle.dump({"P00":p00, "P11":p11},f) 
+                                
+
+
+                    elif is_active:
                         win32api.SetCursorPos((x,y))
 
                 if click and is_blink and x is not None:
@@ -231,9 +343,11 @@ while Running:
 
     my_surface = pygame.pixelcopy.make_surface(np.swapaxes(image,0,1).astype(np.uint8))
     screen.blit(my_surface,(50,0))
+    bg.paint(screen)
     btn_calibrate.paint(screen)
     btn_activate.paint(screen)
     lbl_info.paint(screen)
+    pb_advance.paint(screen)
     mouse = pygame.mouse.get_pos()
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
