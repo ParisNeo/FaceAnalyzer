@@ -1,4 +1,7 @@
 
+
+# V 1.11.1
+ - Added pygame widgets system
 # V 1.11.0
  - Complete reorganization of the helpers
 # V 1.10.1
