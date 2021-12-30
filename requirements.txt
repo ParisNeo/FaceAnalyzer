@@ -3,3 +3,5 @@ mediapipe
 scipy
 opencv-python
 Pillow
+cssutils
+sqtui

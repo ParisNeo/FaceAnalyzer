@@ -17,7 +17,11 @@ import time
 import ctypes
 from pathlib import Path
 
-from FaceAnalyzer.helpers.ui.pygame import Button
+from FaceAnalyzer.helpers.ui.pygame import Widget, Button, Label
+
+global click, is_calibrating
+
+
 user32 = ctypes.windll.user32
 screensize = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
 
@@ -70,10 +74,44 @@ color_light = (170,170,170)
 # dark shade of the button
 color_dark = (100,100,100)
 
+def template_statusbar(rect):
+    label_image = str(Path(__file__).parent/"assets/buttons/label.png").replace("\\","/")
+    
+    # build button
+    return Widget(
+        rect,
+    style="""
+        widget{
+            align:left;
+            color:black;
+    """+
+    f"""
+            background-image:url('file:///{label_image}')
+    """+
+    """
+        }
+    """)
 # Simple button 
+def template_label(title,rect):
+    label_image = str(Path(__file__).parent/"assets/buttons/label.png").replace("\\","/")
+    
+    # build button
+    return Label(
+        title,
+        rect,
+    style="""
+        label{
+            align:left;
+            color:black;
+    """+
+    f"""
+            background-image:url('file:///{label_image}')
+    """+
+    """
+        }
+    """)
 
-
-def template_button(title, rect):
+def template_button(title, rect, is_togle=False, clicked_event_handler=None):
     not_pressed_image = str(Path(__file__).parent/"assets/buttons/not_pressed.png").replace("\\","/")
     hovered_image = str(Path(__file__).parent/"assets/buttons/hovered.png").replace("\\","/")
     pressed_image = str(Path(__file__).parent/"assets/buttons/pressed.png").replace("\\","/")
@@ -107,10 +145,19 @@ def template_button(title, rect):
     """+
     """
         }
-    """)
+    """,
+    is_toggle=is_togle,clicked_event_handler=clicked_event_handler)
 
-btn_calibrate=template_button("Calibrate",(10,560,100,40))
-btn_activate=template_button("Activate",(110,560,100,40))
+def activate():
+    global click
+    click=btn_activate.pressed
+    lbl_info.setText(f"Eye blinking status : {click}")
+def calibrate():
+    global is_calibrating
+    
+btn_calibrate = template_button("Calibrate",(10,560,100,40),clicked_event_handler=calibrate)
+btn_activate = template_button("Activate",(110,560,100,40), is_togle=True,clicked_event_handler=activate)
+lbl_info = template_label("Eye blinking status : False",(210,560,590,40))
 
 #  Main loop
 while Running:
@@ -186,6 +233,7 @@ while Running:
     screen.blit(my_surface,(50,0))
     btn_calibrate.paint(screen)
     btn_activate.paint(screen)
+    lbl_info.paint(screen)
     mouse = pygame.mouse.get_pos()
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
