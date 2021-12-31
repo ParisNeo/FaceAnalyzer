@@ -25,8 +25,6 @@ global click, is_calibrating, calibration_step, calibration_buffer, is_active
 
 
 
-user32 = ctypes.windll.user32
-screensize = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
 
 # open camera
 cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
@@ -122,6 +120,7 @@ beep = Note(440)
 # Build a window
 wm = WindowManager("Gaze calibrator",None)
 infoObject = pygame.display.Info()
+screensize = infoObject.current_w, infoObject.current_h
 
 def template_statusbar(rect):
     label_image = str(Path(__file__).parent/"assets/buttons/label.png").replace("\\","/")

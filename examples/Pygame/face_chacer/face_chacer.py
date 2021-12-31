@@ -26,6 +26,7 @@ import sys
 import pyqtgraph as pg
 from PIL import Image, ImageDraw
 from Chaceable import Chaceable
+import pickle
 
 # open camera
 cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
@@ -39,6 +40,17 @@ cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
 fa = FaceAnalyzer(max_nb_faces=3, image_shape=(width, height))
 
 
+fn = Path(__file__).parent/"calib.pkl"
+
+if fn.exists():
+    with open(str(fn),"rb") as f:
+        v = pickle.load(f) 
+        p00 = v["P00"]
+        p11 = v["P11"]
+else:
+    p00 = [-176.01920468,  -46.66348955] 
+    p11 = [250.42943629, 154.68334261]
+
 
 box_colors=[
     (255,0,0),
@@ -50,6 +62,8 @@ box_colors=[
 # ===== Build pygame window and populate with widgets ===================
 pygame.init()
 wm = WindowManager("Face box", (width,height))
+infoObject = pygame.display.Info()
+screensize = infoObject.current_w, infoObject.current_h
 feedImage = ImageBox(rect=[0,0,width,height])
 lbl_score = Label("Score : 0",[0,0,10,10],style=
 """label{
@@ -95,6 +109,9 @@ while Running:
                 kalman.process(p2d)
                 # Filtered p2d
                 p2d = kalman.x
+                x = int((p2d[0]-p00[0])*screensize[0]/(p11[0]-p00[0]))
+                y = int((p2d[1]-p00[1])*screensize[1]/(p11[1]-p00[1]))
+                p2d = np.array([x,y])
 
 
                 # Detect blinking
