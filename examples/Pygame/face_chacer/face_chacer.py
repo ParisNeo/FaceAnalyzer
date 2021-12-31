@@ -14,6 +14,8 @@ from FaceAnalyzer.helpers.geometry.orientation import faceOrientation2Euler
 from FaceAnalyzer.helpers.geometry.euclidian import get_z_line_equation, get_plane_infos, get_plane_line_intersection, region_3d_2_region_2d, is_point_inside_region
 from FaceAnalyzer.helpers.ui.opencv import cvDrawCross
 from FaceAnalyzer.helpers.ui.pillow import pilShowErrorEllipse, pilOverlayImageWirthAlpha
+from FaceAnalyzer.helpers.ui.pygame import WindowManager, ImageBox, Label
+
 from FaceAnalyzer.helpers.estimation import KalmanFilter
 
 import numpy as np
@@ -45,10 +47,21 @@ box_colors=[
     
 ]
 
+# ===== Build pygame window and populate with widgets ===================
 pygame.init()
-screen = pygame.display.set_mode((800,600))
-pygame.display.set_caption("Face chacer")
+wm = WindowManager("Face box", (width,height))
+feedImage = ImageBox(rect=[0,0,width,height])
+lbl_score = Label("Score : 0",[0,0,10,10],style=
+"""label{
+    color:white;
+}""")
+wm.addWidget(feedImage)
+wm.addWidget(lbl_score)
+# =======================================================================
+
+
 Running = True
+# Kalman filter
 kalman = KalmanFilter(10*np.eye(2), 1*np.eye(2), np.array([0,0]), 10*np.eye(2),np.eye(2),np.eye(2))
 main_plane  =    get_plane_infos(np.array([0,0, 0]),np.array([100,0, 0]),np.array([0, 100,0]))
 
@@ -57,12 +70,10 @@ chaceables.append(Chaceable(Path(__file__).parent/"assets/pika.png", [150,150], 
 chaceables.append(Chaceable(Path(__file__).parent/"assets/pika.png", [150,150], np.array([90,0]), image_size))   
 #Score
 score_value=0
-score_object = pygame.font.Font('freesansbold.ttf',32)
 is_blink = False
 p2d = None
 #  Main loop
 while Running:
-    screen.fill((0,0,0))
     success, image = cap.read()
     image = cv2.cvtColor(image[:,::-1,:], cv2.COLOR_BGR2RGB)#cv2.flip(, 1)
     # Process the image to extract faces and draw the masks on the face in the image
@@ -98,14 +109,11 @@ while Running:
     if p2d is not None:
         cvDrawCross(game_ui_img, (p2d+np.array(image_size)//2).astype(np.int), (200,0,0), 3)
 
-    my_surface = pygame.pixelcopy.make_surface(cv2.cvtColor(np.swapaxes(game_ui_img,0,1).astype(np.uint8),cv2.COLOR_BGR2RGB))
-    screen.blit(my_surface,(0,0))
-    score_render = score_object.render(f"score : {score_value}",True, (255,255,255))
-    screen.blit(score_render,(10,10))       
+    wm.process()
+    feedImage.setImage(cv2.cvtColor(np.swapaxes(game_ui_img,0,1).astype(np.uint8),cv2.COLOR_BGR2RGB))
+    lbl_score.setText(f"score : {score_value}")
 
-    for event in pygame.event.get():
+    for event in wm.events:
         if event.type == pygame.QUIT:
             print("Done")
             Running=False
-    # Update UI
-    pygame.display.update()

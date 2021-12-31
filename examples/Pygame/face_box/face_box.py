@@ -13,6 +13,8 @@ from FaceAnalyzer import FaceAnalyzer, Face,  DrawingSpec, buildCameraMatrix
 from FaceAnalyzer.helpers.geometry.orientation import faceOrientation2Euler
 from FaceAnalyzer.helpers.geometry.euclidian import get_z_line_equation, get_plane_infos, get_plane_line_intersection, region_3d_2_region_2d, is_point_inside_region
 from FaceAnalyzer.helpers.ui.pillow import pilDrawCross, pilShowErrorEllipse, pilOverlayImageWirthAlpha
+from FaceAnalyzer.helpers.ui.pygame import WindowManager, ImageBox
+
 from FaceAnalyzer.helpers.estimation import KalmanFilter
 import numpy as np
 import cv2
@@ -33,23 +35,24 @@ cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
 # Build face analyzer while specifying that we want to extract just a single face
 fa = FaceAnalyzer(max_nb_faces=3, image_shape=(width, height))
 
-
+# =======================================================================
 
 box_colors=[
     (255,0,0),
     (255,0,255),
     (255,0,255),
-    
 ]
 
+# ===== Build pygame window and populate with widgets ===================
 pygame.init()
-screen = pygame.display.set_mode((width,height))
-pygame.display.set_caption("Face box")
+wm = WindowManager("Face box", (width,height))
+feedImage = ImageBox(rect=[0,0,width,height])
+wm.addWidget(feedImage)
+# =======================================================================
 Running = True
 
 #  Main loop
 while Running:
-    screen.fill((255,0,0))
     success, image = cap.read()
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)#
     # Process the image to extract faces and draw the masks on the face in the image
@@ -67,10 +70,10 @@ while Running:
 
 
     image = np.swapaxes(image,0,1)#cv2.flip(, 1)
-    my_surface = pygame.pixelcopy.make_surface(image)
-    screen.blit(my_surface,(0,0))
+    feedImage.setImage(image)
+    wm.process()
 
-    for event in pygame.event.get():
+    for event in wm.events:
         if event.type == pygame.QUIT:
             print("Done")
             Running=False
