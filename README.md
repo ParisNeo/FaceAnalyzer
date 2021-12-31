@@ -101,7 +101,12 @@ This is a more robust tool. Bust requires more resources. It is advised to use a
 ### Pygame
 Here you can find all examples using pygame library
 #### win_face_mouse_controller
-A software to control a mouse using the face and blink to press
+A software to control a mouse using the face and blink to press.
+The software provides a tool to calibrate the mouse control using the face by asking the user to look at the top left of the screen, then to the down right.
+You can activate the motion using activate button and deactivate it by just pressing it again.
+Finally, you can pause eye press control by closing the eye for 2 seconds. To reactivate this close the eye for 2 seconds. After 2 seconds of eye closing, you'll hear a beep that confirms that you have changed the mode.
+
+
 ### SQTUI
 
 #### q_face_infos_graph :

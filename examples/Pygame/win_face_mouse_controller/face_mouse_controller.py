@@ -17,7 +17,7 @@ import time
 import ctypes
 from pathlib import Path
 
-from FaceAnalyzer.helpers.ui.pygame import Widget, Button, Label, ProgressBar
+from FaceAnalyzer.helpers.ui.pygame import Widget, Button, Label, ProgressBar, WindowManager
 from pygame.mixer import Sound, get_init, pre_init
 import array
 import pickle
@@ -72,8 +72,7 @@ box_colors=[
 ]
 
 pygame.init()
-screen = pygame.display.set_mode((800,600))
-pygame.display.set_caption("Face chacer")
+
 Running = True
 kalman = KalmanFilter(1*np.eye(2), 100*np.eye(2), np.array([0,0]), 10*np.eye(2),np.eye(2),np.eye(2))
 main_plane  =    get_plane_infos(np.array([0,0, 0]),np.array([100,0, 0]),np.array([0, 100,0]))
@@ -120,6 +119,9 @@ class Note(Sound):
 
 # beep to 
 beep = Note(440)
+
+# Build a window
+wm = WindowManager("Face Mouse controller")
 
 def template_statusbar(rect):
     label_image = str(Path(__file__).parent/"assets/buttons/label.png").replace("\\","/")
@@ -214,12 +216,16 @@ def template_progressbar(rect):
     )
 
 def activate():
+    """Activates face mouse control
+    """
     global click, is_active
     is_active = btn_activate.pressed
     click = btn_activate.pressed
     lbl_info.setText(f"Eye blinking status : {click}")
 
 def calibrate():
+    """Starts calibration or move to next step in the calibration process
+    """
     global is_calibrating, calibration_step, calibration_buffer
     if not is_calibrating:
         is_calibrating=True
@@ -237,10 +243,16 @@ lbl_info        = template_label("Eye blinking status : False",(0,520,800,40))
 bg              = template_label("",(0,560,800,40))
 pb_advance      = template_progressbar((500,575,290,10))
 
+wm.addWidget(lbl_info)
+wm.addWidget(bg)
+wm.addWidget(pb_advance)
+wm.addWidget(btn_calibrate)
+wm.addWidget(btn_activate)
+
 
 #  Main loop
 while Running:
-    screen.fill((0,0,0))
+    
     success, image = cap.read()
     image = cv2.cvtColor(image[:,::-1,:], cv2.COLOR_BGR2RGB)#cv2.flip(, 1)
     # Process the image to extract faces and draw the masks on the face in the image
@@ -275,7 +287,7 @@ while Running:
                                 click=not click
 
                                 beep.play()
-                                time.sleep(0.1)
+                                time.sleep(0.5)
                                 beep.stop()  
                                 waiting = True                
                 
@@ -342,18 +354,12 @@ while Running:
                     win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP,x,y,0,0)
 
     my_surface = pygame.pixelcopy.make_surface(np.swapaxes(image,0,1).astype(np.uint8))
-    screen.blit(my_surface,(50,0))
-    bg.paint(screen)
-    btn_calibrate.paint(screen)
-    btn_activate.paint(screen)
-    lbl_info.paint(screen)
-    pb_advance.paint(screen)
     mouse = pygame.mouse.get_pos()
-    for event in pygame.event.get():
+    wm.process()
+    wm.screen.blit(my_surface,(50,0))
+    for event in wm.events:
         if event.type == pygame.QUIT:
             print("Done")
             Running=False
-    btn_calibrate.handle_events(event)
-    btn_activate.handle_events(event)
     # Update UI
     pygame.display.update()

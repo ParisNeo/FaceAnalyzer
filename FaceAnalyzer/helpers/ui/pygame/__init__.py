@@ -35,6 +35,8 @@ class WidgetStyle:
     img:str = None
 
 
+
+
 class Widget():
     def __init__(
                     self,
@@ -118,6 +120,31 @@ class Widget():
         else:
             screen.blit(pygame.transform.scale(style.img, (self.rect[2], self.rect[3])), (self.rect[0],self.rect[1]))
 
+    def handle_events(self, events):
+        pass
+class WindowManager():
+    def __init__(self, window_title:str="", resolution:tuple=(800,600)):
+        """Builds a window managaer object
+        """
+        self.screen = pygame.display.set_mode(resolution)
+        pygame.display.set_caption(window_title)
+        self.widgets = []
+        self.events = None
+
+    def addWidget(self, widget:Widget):
+        """Adds a new widget to the widgets list
+
+        Args:
+            widget (Widget): The widget to be added
+        """
+        self.widgets.append(widget)
+    
+    def process(self, background_color:tuple = (0,0,0)):
+        self.screen.fill(background_color)
+        self.events = pygame.event.get()
+        for widget in self.widgets:
+            widget.paint(self.screen)
+            widget.handle_events(self.events)
 class Label(Widget):
     def __init__(
                     self,
@@ -240,29 +267,28 @@ class Button(Widget):
             screen.blit(pygame.transform.scale(style.img, (self.rect[2], self.rect[3])), (self.rect[0],self.rect[1]))
         self.blit_text(style, screen)
 
-    def handle_events(self, event):
+    def handle_events(self, events):
         """Handles the events
 
-        Args:
-            event ([type]): The event object to be handled
         """
-        if event.type == pygame.MOUSEMOTION:
-            self.hovered = is_point_inside_rect(event.pos,self.rect2)
-        elif event.type == pygame.MOUSEBUTTONDOWN:
-            if self.hovered == True:
-                if self.is_toggle:
-                    if not self.toggled:
-                        self.pressed=not self.pressed
-                        self.toggled=True
-                else:
-                    self.pressed=True
-                if self.clicked_event_handler is not None:
-                    self.clicked_event_handler()
+        for event in events:
+            if event.type == pygame.MOUSEMOTION:
+                self.hovered = is_point_inside_rect(event.pos,self.rect2)
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if self.hovered == True:
+                    if self.is_toggle:
+                        if not self.toggled:
+                            self.pressed=not self.pressed
+                            self.toggled=True
+                    else:
+                        self.pressed=True
+                    if self.clicked_event_handler is not None:
+                        self.clicked_event_handler()
 
-        elif event.type == pygame.MOUSEBUTTONUP:
-            if not self.is_toggle:
-                self.pressed=False
-            self.toggled=False
+            elif event.type == pygame.MOUSEBUTTONUP:
+                if not self.is_toggle:
+                    self.pressed=False
+                self.toggled=False
 
 class ProgressBar(Widget):
     def __init__(
