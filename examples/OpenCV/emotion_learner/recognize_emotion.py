@@ -50,6 +50,16 @@ emotions_colors=[
     (255,0,0),
     (255,0,255),
 ]
+# Get camera calibration parameters
+calibration_file_name = Path(__file__).parent/"cam_calib.pkl"
+if calibration_file_name.exists():
+    with open(str(calibration_file_name),"rb") as f:
+        calib = pickle.load(f)
+    mtx = calib["mtx"]
+    dist = calib["dist"]
+else:
+    mtx = None
+    dist = np.zeros((4, 1))
 
 # Main Loop
 while cap.isOpened():
@@ -71,7 +81,7 @@ while cap.isOpened():
             classification = emotionnet.predict(vertices[None,...])[0,...]
             classification_id = classification.argmax()
             #face.draw_landmarks(image, color=(0,0,0))
-            vertices = face.get_realigned_landmarks_pos()
+            vertices = face.get_3d_realigned_face(camera_matrix=mtx, dist_coeffs=dist)
             #face.draw_landmarks(image,vertices, color=(255,0,0))
             face.draw_bounding_box(image, thickness=2, color=emotions_colors[classification_id],text=f"{classifications_strings[classification_id]}: {100*classification[classification_id]:.2f}%")
             #face.draw_bounding_box(image, thickness=5,text=f"{known_faces_names[nearest]}: {100*(max_dist-nearest_distance)/max_dist:.2f}%" if nearest_distance<max_dist else "unknown")

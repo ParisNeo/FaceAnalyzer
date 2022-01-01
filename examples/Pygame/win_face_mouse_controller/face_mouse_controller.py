@@ -49,7 +49,7 @@ calibration_step=0
 calibration_buffer = [[],[]]
 is_active = False
 
-fn = Path(__file__).parent/"calib.pkl"
+fn = Path(__file__).parent/"plane_calib.pkl"
 
 if fn.exists():
     with open(str(fn),"rb") as f:
@@ -72,6 +72,7 @@ box_colors=[
 ]
 
 pygame.init()
+piew_sound = pygame.mixer.Sound(Path(__file__).parent/"assets/audio/piew.wav")
 
 Running = True
 kalman = KalmanFilter(1*np.eye(2), 100*np.eye(2), np.array([0,0]), 10*np.eye(2),np.eye(2),np.eye(2))
@@ -96,29 +97,6 @@ color_light = (170,170,170)
 color_dark = (100,100,100)
 
 
-
-class Note(Sound):
-    """A note class (Code borrowed from : https://gist.github.com/ohsqueezy/6540433) 
-
-    """
-    def __init__(self, frequency, volume=.1):
-        self.frequency = frequency
-        Sound.__init__(self, self.build_samples())
-        self.set_volume(volume)
-
-    def build_samples(self):
-        period = int(round(get_init()[0] / self.frequency))
-        samples = array.array("h", [0] * period)
-        amplitude = 2 ** (abs(get_init()[1]) - 1) - 1
-        for time in range(period):
-            if time < period / 2:
-                samples[time] = amplitude
-            else:
-                samples[time] = -amplitude
-        return samples
-
-# beep to 
-beep = Note(440)
 
 # Build a window
 wm = WindowManager("Face Mouse controller")
@@ -206,11 +184,11 @@ def template_progressbar(rect):
     style="""
         brogressbar.outer{
             color:white;
-            background:gray;
+            background-color:gray;
         }
         brogressbar.inner{
             color:white;
-            background:red;
+            background-color:red;
         }
     """
     )
@@ -287,76 +265,68 @@ while Running:
                             if not waiting:
                                 if time.time()-t>2: # 2 seconds to consider it a click
                                     click=not click
-
-                                    beep.play()
-                                    time.sleep(0.5)
-                                    beep.stop()  
+                                    pygame.mixer.Sound.play(piew_sound)
                                     waiting = True                
                 
                 # =========================================================================================
-                if eye_opening>0.35:
-                    # First let's get the forward line (a virtual line that goes from the back of the head through tho nose towards the camera)
-                    li  =    get_z_line_equation(face_pos, face_ori)
-                    # Now we find the intersection point between the line and the plan. p is the 3d coordinates of the intersection pount, and p2d is the coordinates of this point in the plan
-                    p, p2d   =    get_plane_line_intersection(main_plane, li)
-                    kalman.process(p2d)
-                    # Filtered p2d
-                    p2d = kalman.x
+                # First let's get the forward line (a virtual line that goes from the back of the head through tho nose towards the camera)
+                li  =    get_z_line_equation(face_pos, face_ori)
+                # Now we find the intersection point between the line and the plan. p is the 3d coordinates of the intersection pount, and p2d is the coordinates of this point in the plan
+                p, p2d   =    get_plane_line_intersection(main_plane, li)
+                kalman.process(p2d)
+                # Filtered p2d
+                p2d = kalman.x
 
 
-                    # Need to calibrate the screen 
-                    # Look at top left of the screen and save the p2d value for that position
-                    # Look at the bottom right of the screen and  save the p2d value for that position
-                    # 0,0 -> [-176.01920468  -46.66348955] 
-                    # w,h -> [250.42943629 154.68334261]
+                # Need to calibrate the screen 
+                # Look at top left of the screen and save the p2d value for that position
+                # Look at the bottom right of the screen and  save the p2d value for that position
+                # 0,0 -> [-176.01920468  -46.66348955] 
+                # w,h -> [250.42943629 154.68334261]
 
-                    x = int((p2d[0]-p00[0])*screensize[0]/(p11[0]-p00[0]))
-                    y = int((p2d[1]-p00[1])*screensize[1]/(p11[1]-p00[1]))
-                    if is_calibrating:
-                        if calibration_step==0:
-                            lbl_info.setText(f"Look at Left Top corner : {p2d} <STAND BY>")
-                        elif calibration_step==1:
-                            lbl_info.setText(f"Look at Left Top corner : {p2d} <RECORDING>")
-                            calibration_buffer[0].append(p2d[0])
-                            calibration_buffer[1].append(p2d[1])
-                            pb_advance.setValue(len(calibration_buffer[0])/100)
-                            if len(calibration_buffer[0])==100:
-                                p00 = [np.mean(calibration_buffer[0]), np.mean(calibration_buffer[1])]
-                                calibration_step=2
-                                beep.play(-1)
-                                time.sleep(0.5)
-                                beep.stop()
-                        elif calibration_step==2:
-                            lbl_info.setText(f"Look at Right Bottom corner : {p2d}<STAND BY>")
-                        elif calibration_step==3:
-                            lbl_info.setText(f"Look at Right Bottom corner : {p2d}<RECORDING>")
-                            calibration_buffer[0].append(p2d[0])
-                            calibration_buffer[1].append(p2d[1])
-                            pb_advance.setValue(len(calibration_buffer[0])/100)
-                            if len(calibration_buffer[0])==100:
-                                p11 = [np.mean(calibration_buffer[0]), np.mean(calibration_buffer[1])]
-                                calibration_step=0
-                                is_calibrating=False
-                                beep.play(-1)
-                                time.sleep(0.5)
-                                beep.stop()
-                                lbl_info.setText(f"<Done>")
-                                btn_calibrate.setText("Calibrate")
-                                fn = Path(__file__).parent/"calib.pkl"
-                                with open(str(fn),"wb") as f:
-                                    pickle.dump({"P00":p00, "P11":p11},f) 
-                                
+                x = int((p2d[0]-p00[0])*screensize[0]/(p11[0]-p00[0]))
+                y = int((p2d[1]-p00[1])*screensize[1]/(p11[1]-p00[1]))
+                if is_calibrating:
+                    if calibration_step==0:
+                        lbl_info.setText(f"Look at Left Top corner : {p2d} <STAND BY>")
+                    elif calibration_step==1:
+                        lbl_info.setText(f"Look at Left Top corner : {p2d} <RECORDING>")
+                        calibration_buffer[0].append(p2d[0])
+                        calibration_buffer[1].append(p2d[1])
+                        pb_advance.setValue(len(calibration_buffer[0])/100)
+                        if len(calibration_buffer[0])==100:
+                            p00 = [np.mean(calibration_buffer[0]), np.mean(calibration_buffer[1])]
+                            calibration_step=2
+                            pygame.mixer.Sound.play(piew_sound)
+                    elif calibration_step==2:
+                        lbl_info.setText(f"Look at Right Bottom corner : {p2d}<STAND BY>")
+                    elif calibration_step==3:
+                        lbl_info.setText(f"Look at Right Bottom corner : {p2d}<RECORDING>")
+                        calibration_buffer[0].append(p2d[0])
+                        calibration_buffer[1].append(p2d[1])
+                        pb_advance.setValue(len(calibration_buffer[0])/100)
+                        if len(calibration_buffer[0])==100:
+                            p11 = [np.mean(calibration_buffer[0]), np.mean(calibration_buffer[1])]
+                            calibration_step=0
+                            is_calibrating=False
+                            pygame.mixer.Sound.play(piew_sound)
+                            lbl_info.setText(f"<Done>")
+                            btn_calibrate.setText("Calibrate")
+                            fn = Path(__file__).parent/"plane_calib.pkl"
+                            with open(str(fn),"wb") as f:
+                                pickle.dump({"P00":p00, "P11":p11},f) 
+                            
 
 
-                    elif is_active:
-                        win32api.SetCursorPos((x,y))
+                elif is_active:
+                    win32api.SetCursorPos((x,y))
 
                 if click and is_blink and x is not None:
                     win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN,x,y,0,0)
                     win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP,x,y,0,0)
 
     mouse = pygame.mouse.get_pos()
-    img_feed.setImage(np.swapaxes(image,0,1))
+    img_feed.setImage(image)
     wm.process()
     for event in wm.events:
         if event.type == pygame.QUIT:

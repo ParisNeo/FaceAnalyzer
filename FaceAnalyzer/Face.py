@@ -778,7 +778,7 @@ class Face():
 
         return face_pos, face_ori
 
-    def get_eyes_position(self)->tuple:
+    def get_eyes_position(self, camera_matrix:np.ndarray = None, dist_coeffs:np.ndarray=np.zeros((4,1)))->tuple:
         """Gets the posture of the eyes (position in cartesian space and Euler angles)
         Args:
             camera_matrix (int, optional)       : The camera matrix built using buildCameraMatrix Helper function. Defaults to a perfect camera matrix 
@@ -790,11 +790,14 @@ class Face():
         # Assertion to verify that the face object is ready
         assert self.ready, "Face object is not ready. There are no landmarks extracted."
 
+        # Correct orientation
+        lm = self.get_3d_realigned_landmarks_pos(camera_matrix=camera_matrix, dist_coeffs=dist_coeffs)
+
         # Left eye
-        iris = np.array(self.get_landmark_pos(Face.left_eye_center_index))
+        iris = np.array(lm[Face.left_eye_center_index,...])
         
-        left = np.array(self.get_landmark_pos(263))
-        right = np.array(self.get_landmark_pos(362))
+        left = np.array(lm[263])
+        right = np.array(lm[362])
 
         center = (left+right)/2
         ex = left-right
@@ -808,9 +811,9 @@ class Face():
         left_pos = np.array([np.dot((iris-center),ex)/nx,np.dot((iris-center),ey)/nx])
 
         # right
-        iris = np.array(self.get_landmark_pos(Face.right_eye_center_index))
-        left = np.array(self.get_landmark_pos(133))
-        right = np.array(self.get_landmark_pos(130))
+        iris = np.array(lm[Face.right_eye_center_index])
+        left = np.array(lm[133])
+        right = np.array(lm[130])
 
         center = (left+right)/2
         ex = left-right
@@ -824,7 +827,7 @@ class Face():
 
         return left_pos, right_pos
 
-    def compose_eye_rot(self, eye_pos:list, face_orientation:np.ndarray, offset=np.array([0,0]), x2ang: int=90, y2ang:int=60)->np.ndarray:
+    def compose_eye_rot(self, eye_pos:list, face_orientation:np.ndarray, offset=np.array([0,0]), x2ang: int=180, y2ang:int=60)->np.ndarray:
         """Composes eye position with face rotation to produce eye orientation in world coordinates
 
         Args:

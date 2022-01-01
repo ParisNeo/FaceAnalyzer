@@ -10,6 +10,8 @@ import numpy as np
 import cv2
 import time
 from pathlib import Path
+import pickle
+
 # open camera
 cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 
@@ -30,6 +32,17 @@ box_colors=[
     (255,0,255),
     
 ]
+# Get camera calibration parameters
+calibration_file_name = Path(__file__).parent/"cam_calib.pkl"
+if calibration_file_name.exists():
+    with open(str(calibration_file_name),"rb") as f:
+        calib = pickle.load(f)
+    mtx = calib["mtx"]
+    dist = calib["dist"]
+else:
+    mtx = None
+    dist = np.zeros((4, 1))
+
 # Main Loop
 while cap.isOpened():
     # Read image
@@ -45,7 +58,7 @@ while cap.isOpened():
         for i in range(fa.nb_faces):
             face = fa.faces[i]
             # Get head position and orientation compared to the reference pose (here the first frame will define the orientation 0,0,0)
-            pos, ori = face.get_head_posture()
+            pos, ori = face.get_head_posture(camera_matrix=mtx, dist_coeffs=dist)
             if pos is not None:
                 yaw, pitch, roll = faceOrientation2Euler(ori, degrees=True)
                 face.draw_bounding_box(image, color=box_colors[i%3], thickness=5)

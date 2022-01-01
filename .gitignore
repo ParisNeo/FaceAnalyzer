@@ -130,3 +130,7 @@ dmypy.json
 # Pyre type checker
 .pyre/
 *.blend1
+
+# Calibration files
+cam_calib.pkl
+plane_calib.pkl

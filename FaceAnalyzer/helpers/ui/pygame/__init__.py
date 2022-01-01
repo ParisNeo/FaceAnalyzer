@@ -52,6 +52,16 @@ class Widget():
         }, extra_styles)
         self.setStyleSheet(style)
 
+    def setPosition(self, pos):
+        self.rect[0]=pos[0]
+        self.rect[1]=pos[1]
+        self.setRect(self.rect)
+
+    def setSize(self, size):
+        self.rect[2]=size[0]
+        self.rect[3]=size[1]
+        self.setRect(self.rect)
+
     def setRect(self, rect):
         self.rect = rect
         self.rect2 = (rect[0],rect[1],rect[0]+rect[2],rect[1]+rect[3])
@@ -176,10 +186,6 @@ class Sprite(Widget):
         }
 """,extra_styles={"label":WidgetStyle()})
 
-    def setPosition(self, pos):
-        self.rect[0]=pos[0]
-        self.rect[1]=pos[1]
-        self.setRect(self.rect)
 
 
 
@@ -189,21 +195,30 @@ class ImageBox(Widget):
                     image:np.ndarray=None, 
                     rect:tuple=[0,0,800,600], 
                     style:str="btn.normal{color:red; background-color:#ffffff;}\nbtn.hover{color:red; background-color:#ff0000};",
-                    clicked_event_handler=None
+                    clicked_event_handler=None,
+                    color_key=None,
+                    alpha=100
                 ):
         Widget.__init__(self,rect, style,extra_styles={"label":WidgetStyle()})
+        self.color_key = color_key
+        self.alpha = alpha
         if image is not None:
             self.setImage(image)
         else:
             self.surface = None
 
     def setImage(self, image:np.ndarray):
-        self.surface = pygame.pixelcopy.make_surface(image.astype(np.uint8))
+        self.surface = pygame.pixelcopy.make_surface(np.swapaxes(image,0,1).astype(np.uint8))
+        if self.color_key is not None:
+            self.surface.set_colorkey(self.color_key)
+        if self.alpha<100:
+            self.surface.set_alpha(self.alpha)
         self.surface = pygame.transform.scale(self.surface, (self.rect[2], self.rect[3]))
 
     def paint(self, screen):
         if self.surface is not None:
-            screen.blit(self.surface,(self.rect[0],self.rect[1]))
+            screen.blit(pygame.transform.scale(self.surface, (self.rect[2], self.rect[3])),(self.rect[0],self.rect[1]))
+
 class Label(Widget):
     def __init__(
                     self,

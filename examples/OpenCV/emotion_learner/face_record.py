@@ -51,6 +51,17 @@ box_colors=[
     (255,0,255),
     
 ]
+# Get camera calibration parameters
+calibration_file_name = Path(__file__).parent/"cam_calib.pkl"
+if calibration_file_name.exists():
+    with open(str(calibration_file_name),"rb") as f:
+        calib = pickle.load(f)
+    mtx = calib["mtx"]
+    dist = calib["dist"]
+else:
+    mtx = None
+    dist = np.zeros((4, 1))
+
 # A variable to tell if we are recording or not
 recording=False
 # Main Loop
@@ -67,7 +78,7 @@ while cap.isOpened():
     if fa.nb_faces>0:
         face = fa.faces[0]
         # Get a realigned version of the landmarks
-        vertices = face.get_3d_realigned_landmarks_pos()[:,:2] 
+        vertices = face.get_3d_realigned_landmarks_pos(camera_matrix=mtx, dist_coeffs=dist)[:,:2] 
         vertices-= vertices.min(axis=0)
         # If you want to hide the face and only show the realigned landmarks
         #image = np.zeros_like(image)

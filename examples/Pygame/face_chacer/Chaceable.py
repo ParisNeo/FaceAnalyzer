@@ -3,15 +3,15 @@ import pyqtgraph as pg
 import cv2
 from pathlib import Path
 import numpy as np
-from FaceAnalyzer.helpers.geometry.euclidian import  is_point_inside_region
+from FaceAnalyzer.helpers.geometry.euclidian import  is_point_inside_rect
 from FaceAnalyzer.helpers.ui.opencv import cvOverlayImageWirthAlpha
-from FaceAnalyzer.helpers.ui.pillow import pilOverlayImageWirthAlpha
+from FaceAnalyzer.helpers.ui.pygame import ImageBox
 import pygame
 
-class Chaceable():
+class Chaceable(ImageBox):
     """An object that can be chaced in space
     """
-    def __init__(self, image_path:Path, size:np.ndarray, position_2d:list, image_size:list=[640,480], normal_color:tuple=(255,255,255), highlight_color:tuple=(0,255,0))->None:
+    def __init__(self, image:np.array, rect:list=[0,0,10,10])->None:
         """Builds the chaceable
 
         Args:
@@ -22,15 +22,8 @@ class Chaceable():
             normal_color (tuple, optional): The normal color of the cheaceable. Defaults to (255,255,255).
             highlight_color (tuple, optional): The hilight color of the chaceable. Defaults to (0,255,0).
         """
-        self.image_size = image_size
-        self.overlay = cv2.imread(str(image_path))
-        self.size =size
-        self.shape=np.array([[0,0],[size[0],0],[size[0],size[1]],[0,size[1]]]).T
-        self.pos= position_2d.reshape((2,1))
-        self.normal_color = normal_color
-        self.highlight_color = highlight_color
+        ImageBox.__init__(self, image, rect, color_key=(0,0,0), alpha=100)
         self.is_contact=False
-        self.curr_shape = self.shape+self.pos
     
     def move_to(self, position_2d:np.ndarray)->None:
         """Moves the object to a certain position
@@ -38,8 +31,9 @@ class Chaceable():
         Args:
             position_2d (np.ndarray): The new position to move to
         """
-        self.pos= position_2d.reshape((2,1))
-        self.curr_shape = self.shape+self.pos
+        self.rect[0]=position_2d[0]
+        self.rect[1]=position_2d[1]
+        self.setRect(self.rect)
 
     def check_contact(self, p2d:np.ndarray)->bool:
         """Check if a point is in contact with the chaceable
@@ -50,17 +44,16 @@ class Chaceable():
         Returns:
             bool: True if the point is inside the object
         """
-        self.is_contact=is_point_inside_region(p2d, self.curr_shape)
+        self.is_contact=is_point_inside_rect(p2d, self.rect2)
+        if self.is_contact:
+            self.alpha=50
         return self.is_contact
 
-    def draw(self, pImage:np.ndarray)->None:
-        """Draws the chaceable on an image
-
-        Args:
-            image (np.ndarray): The image on which to draw the chaceable
-        """
-        npstyle_region_porel_pos = self.pos+np.array([self.image_size]).T//2
-        if self.is_contact:
-            cvOverlayImageWirthAlpha(pImage, self.overlay, npstyle_region_porel_pos[0], npstyle_region_porel_pos[1], self.size[0], self.size[1], 0.5)
-        else:
-            cvOverlayImageWirthAlpha(pImage, self.overlay, npstyle_region_porel_pos[0], npstyle_region_porel_pos[1], self.size[0], self.size[1], 1.0)
+    def paint(self, screen):
+        if self.surface is not None:
+            if self.is_contact:
+                self.surface.set_alpha(100)
+                screen.blit(pygame.transform.scale(self.surface, (self.rect[2], self.rect[3])),(self.rect[0],self.rect[1]))
+            else:
+                self.surface.set_alpha(200)
+                screen.blit(pygame.transform.scale(self.surface, (self.rect[2], self.rect[3])),(self.rect[0],self.rect[1]))

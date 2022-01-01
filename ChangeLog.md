@@ -1,5 +1,6 @@
 
-
+# V 1.11.2
+ - Added camera calibration and enhanced calibration and enhanced calibration procedure
 # V 1.11.1
  - Added pygame widgets system
 # V 1.11.0

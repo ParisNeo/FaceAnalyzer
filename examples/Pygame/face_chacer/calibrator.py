@@ -23,6 +23,7 @@ import pickle
 
 global click, is_calibrating, calibration_step, calibration_buffer, is_active
 
+pygame.init()
 
 
 
@@ -46,7 +47,9 @@ calibration_step=0
 calibration_buffer = [[],[]]
 is_active = False
 
-fn = Path(__file__).parent/"calib.pkl"
+piew_sound = pygame.mixer.Sound(Path(__file__).parent/"assets/piew.wav")
+
+fn = Path(__file__).parent/"plane_calib.pkl"
 
 if fn.exists():
     with open(str(fn),"rb") as f:
@@ -68,7 +71,6 @@ box_colors=[
     
 ]
 
-pygame.init()
 
 Running = True
 kalman = KalmanFilter(1*np.eye(2), 100*np.eye(2), np.array([0,0]), 10*np.eye(2),np.eye(2),np.eye(2))
@@ -94,51 +96,12 @@ color_dark = (100,100,100)
 
 
 
-class Note(Sound):
-    """A note class (Code borrowed from : https://gist.github.com/ohsqueezy/6540433) 
-
-    """
-    def __init__(self, frequency, volume=.1):
-        self.frequency = frequency
-        Sound.__init__(self, self.build_samples())
-        self.set_volume(volume)
-
-    def build_samples(self):
-        period = int(round(get_init()[0] / self.frequency))
-        samples = array.array("h", [0] * period)
-        amplitude = 2 ** (abs(get_init()[1]) - 1) - 1
-        for time in range(period):
-            if time < period / 2:
-                samples[time] = amplitude
-            else:
-                samples[time] = -amplitude
-        return samples
-
-# beep to 
-beep = Note(440)
-
 # Build a window
 wm = WindowManager("Gaze calibrator",None)
 infoObject = pygame.display.Info()
 screensize = infoObject.current_w, infoObject.current_h
 
-def template_statusbar(rect):
-    label_image = str(Path(__file__).parent/"assets/buttons/label.png").replace("\\","/")
-    
-    # build button
-    return Widget(
-        rect,
-    style="""
-        widget{
-            align:left;
-            color:black;
-    """+
-    f"""
-            background-color:white;
-    """+
-    """
-        }
-    """)
+
 # Simple button 
 def template_label(title,rect):
     label_image = str(Path(__file__).parent/"assets/buttons/label.png").replace("\\","/")
@@ -309,9 +272,7 @@ while Running:
                         if len(calibration_buffer[0])==100:
                             p00 = [np.mean(calibration_buffer[0]), np.mean(calibration_buffer[1])]
                             calibration_step=2
-                            beep.play(-1)
-                            time.sleep(0.5)
-                            beep.stop()
+                            pygame.mixer.Sound.play(piew_sound)
                     elif calibration_step==2:
                         lbl_info.setText(f"Look at Right Bottom corner : {p2d}<STAND BY>")
                         pb_advance.setValue(0)
@@ -324,12 +285,10 @@ while Running:
                             p11 = [np.mean(calibration_buffer[0]), np.mean(calibration_buffer[1])]
                             calibration_step=0
                             is_calibrating=False
-                            beep.play(-1)
-                            time.sleep(0.5)
-                            beep.stop()
+                            pygame.mixer.Sound.play(piew_sound)
                             lbl_info.setText(f"<Done>")
                             btn_calibrate.setText("Calibrate")
-                            fn = Path(__file__).parent/"calib.pkl"
+                            fn = Path(__file__).parent/"plane_calib.pkl"
                             with open(str(fn),"wb") as f:
                                 pickle.dump({"P00":p00, "P11":p11},f) 
                             pb_advance.setValue(0)
@@ -340,7 +299,7 @@ while Running:
 
 
     mouse = pygame.mouse.get_pos()
-    img_feed.setImage(np.swapaxes(image,0,1))
+    img_feed.setImage(image)
     wm.process()
     for event in wm.events:
         if event.type == pygame.QUIT:
