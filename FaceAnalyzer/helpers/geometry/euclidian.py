@@ -173,3 +173,23 @@ def is_point_inside_rect(point: tuple, rect:tuple):
     """
     # Now let's check that the poit is inside the region
     return point[0]>rect[0] and point[0]<rect[2] and point[1]>rect[1] and point[1]<rect[3] 
+
+def get_alignment_coefficient(points:np.ndarray)->np.float:
+    """Computes the alignment coefficient of multiple points. The returned value is 0 if all points belong to the same line and n-2 if al successive lines formed by the points are orthogonal
+    useful to detect colinearity of lines or segments.
+
+    Args:
+        points (np.array): A nX2 or Nx3 array containing for each row the coordinates of a point. each successive points construct a segment and we wish to find the alignement coefficient between those segments
+
+    Returns:
+        np.float: The alignement coefficient (0 if all segments are colinear and n-2 if all are orthogonal)
+    """
+    value=0.0
+    for i in range(points.shape[0]-2):
+        v1 = points[i+2,...]-points[i+1,...]
+        v2 = points[i+1,...]-points[i,...]
+        n1 = np.linalg.norm(v1)
+        n2 = np.linalg.norm(v2)
+        if n1>0 and n2>0:
+            value += np.linalg.norm(np.cross(v1/n1,v2/n2))
+    return value
