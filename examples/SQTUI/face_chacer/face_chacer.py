@@ -25,7 +25,7 @@ from PIL import Image, ImageDraw
 from Chaceable import Chaceable
 
 # open camera
-cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+cap = cv2.VideoCapture(0)
 width = 640#width = 1920
 height = 480#height = 1080
 image_size = [width, height]

@@ -20,7 +20,7 @@ from sqtui import QtWidgets, QtCore
 import pyqtgraph as pg
 
 # open camera
-cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+cap = cv2.VideoCapture(0)
 width = 640#width = 1920
 height = 480#height = 1080
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)

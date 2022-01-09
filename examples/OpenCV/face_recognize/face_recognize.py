@@ -34,7 +34,7 @@ if not faces_path.exists():
     faces_path.mkdir(parents=True, exist_ok=True)
 
 # open camera
-cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+cap = cv2.VideoCapture(0)
 
 # Build a window
 cv2.namedWindow('Face Mesh', flags=cv2.WINDOW_NORMAL)

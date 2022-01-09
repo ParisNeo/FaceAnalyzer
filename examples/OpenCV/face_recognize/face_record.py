@@ -27,7 +27,7 @@ if not faces_path.exists():
 
 
 # open camera
-cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+cap = cv2.VideoCapture(0)
 
 # Build a window
 cv2.namedWindow('Face Mesh', flags=cv2.WINDOW_NORMAL)

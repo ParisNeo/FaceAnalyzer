@@ -11,7 +11,7 @@ import cv2
 import time
 from FaceAnalyzer import FaceAnalyzer
 
-cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+cap = cv2.VideoCapture(0)
 
 # Blinks counter
 n_blinks = 0

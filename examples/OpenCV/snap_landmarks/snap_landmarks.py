@@ -13,7 +13,7 @@ from pathlib import Path
 import mediapipe as mp
 
 # open camera
-cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+cap = cv2.VideoCapture(0)
 
 # Build face analyzer while specifying that we want to extract just a single face
 fa = FaceAnalyzer(max_nb_faces=1)
