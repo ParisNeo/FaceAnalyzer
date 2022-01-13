@@ -1,4 +1,6 @@
 
+# V 1.13.2
+ - Bug fix, helpers ui can now be imported
 # V 1.11.2
  - Added camera calibration and enhanced calibration and enhanced calibration procedure
 # V 1.11.1
