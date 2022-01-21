@@ -23,7 +23,7 @@ from pygame.mixer import Sound, get_init, pre_init
 import array
 import pickle
 
-from examples.Pygame.face_chacer.Chaceable import Chaceable
+from Chaceable import Chaceable
 
 global click, is_calibrating, calibration_step, calibration_buffer, is_active
 
