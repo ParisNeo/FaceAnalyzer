@@ -45,20 +45,6 @@ box_colors=[
 
 # ===== Build pygame window and populate with widgets ===================
 pygame.init()
-
-
-# ===================
-# Project : StopMotionMaer
-# Author : ParisNeo  (Saifeddine ALOUI)
-# Description :
-# A free software to create stop motion videos based on moviepy library
-# ===================
-
-import pygame
-from moviepy.editor import VideoFileClip
-
-# ===== Build pygame window and populate with widgets ===================
-pygame.init()
 class MainWindow(WindowManager):
     def __init__(self):
         WindowManager.__init__(self, "Face box", (width,height))
@@ -106,8 +92,6 @@ class MainWindow(WindowManager):
     
 # =======================================================================
 
-#clip = VideoFileClip(r'C:\Users\aloui\Videos\test\Terminator.mp4')
-#clip.preview()
 if __name__=="__main__":
     mw = MainWindow()
     mw.loop()

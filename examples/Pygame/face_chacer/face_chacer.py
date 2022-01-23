@@ -18,7 +18,7 @@ import time
 import ctypes
 from pathlib import Path
 
-from FaceAnalyzer.helpers.ui.pygame import Widget, Button, Label, ProgressBar, ImageBox, WindowManager, Sprite
+from FaceAnalyzer.helpers.ui.pygame import Widget, Button, Label, ProgressBar, ImageBox, WindowManager, Sprite, MenuBar, Menu, Action
 from pygame.mixer import Sound, get_init, pre_init
 import array
 import pickle
@@ -27,7 +27,7 @@ from Chaceable import Chaceable
 
 global click, is_calibrating, calibration_step, calibration_buffer, is_active
 
-score  = 0
+
 pika_width=75
 pika_height=100
 
@@ -96,7 +96,6 @@ color_light = (170,170,170)
   
 # dark shade of the button
 color_dark = (100,100,100)
-
 
 
 piew_sound = pygame.mixer.Sound(Path(__file__).parent/"assets/piew.wav")
@@ -185,39 +184,56 @@ def template_progressbar(rect):
 def stop():
     exit(0)
 
-# infoObject.current_w, infoObject.current_h
-btn_stop        = template_button("Stop",(10,infoObject.current_h-50,100,40), is_togle=True,clicked_event_handler=stop)
-lbl_score        = template_label("Score :0",(0,infoObject.current_h-90,infoObject.current_w,40))
-pb_advance      = template_progressbar((500,infoObject.current_h-50,200,20))
-img_feed        = ImageBox(rect=[infoObject.current_w//2-320,infoObject.current_h//2-240,640,480])
-
-cross_image             = str(Path(__file__).parent/"assets/cross.png").replace("\\","/")
-pika_image              = str(Path(__file__).parent/"assets/pika.png").replace("\\","/")
-cross_surface           = Sprite(cross_image, rect=[infoObject.current_w//2,infoObject.current_h//2,20,20])
-pika_srface             = Chaceable(
-                            cv2.cvtColor(cv2.imread(pika_image), cv2.COLOR_BGR2RGB), 
-                            rect=[np.random.randint(0,screensize[0]-pika_width),np.random.randint(0,screensize[1]-pika_height),pika_width,pika_height]
-                        )
-
-wm.addWidget(lbl_score)
-wm.addWidget(btn_stop)
-wm.addWidget(img_feed)
-
-wm.addWidget(pika_srface)
-wm.addWidget(cross_surface)
-wm.addWidget(pb_advance)
 
 
-#  Main loop
-while Running:
-    
-    success, image = cap.read()
-    image = cv2.cvtColor(image[:,::-1,:], cv2.COLOR_BGR2RGB)#cv2.flip(, 1)
-    # Process the image to extract faces and draw the masks on the face in the image
-    fa.process(image)
-    game_ui_img =np.zeros((600,800,3))
-    if fa.nb_faces>0:
-        #for i in range(fa.nb_faces):
+# ===== Build pygame window and populate with widgets ===================
+pygame.init()
+class MainWindow(WindowManager):
+    def __init__(self):
+        WindowManager.__init__(self, "Face box", None)# (width,height)
+        self.mn_bar = self.build_menu_bar()
+        self.file = Menu(self.mn_bar,"File")
+        quit = Action(self.file,"Quit")
+        quit.clicked_event_handler = self.fn_quit
+        self.lbl_fps = Label("FPS",rect=[0,20,100,20],style="")
+        self.feedImage = ImageBox(rect=[0,20,width,height])
+        self.addWidget(self.feedImage)
+        self.addWidget(self.lbl_fps)
+        # infoObject.current_w, infoObject.current_h
+        self.btn_stop        = template_button("Stop",(10,infoObject.current_h-50,100,40), is_togle=True,clicked_event_handler=stop)
+        self.lbl_score        = template_label("Score :0",(0,infoObject.current_h-90,infoObject.current_w,40))
+        self.pb_advance      = template_progressbar((500,infoObject.current_h-50,200,20))
+        self.img_feed        = ImageBox(rect=[infoObject.current_w//2-320,infoObject.current_h//2-240,640,480])
+
+        self.cross_image             = str(Path(__file__).parent/"assets/cross.png").replace("\\","/")
+        self.pika_image              = str(Path(__file__).parent/"assets/pika.png").replace("\\","/")
+        self.cross_surface           = Sprite(self.cross_image, rect=[infoObject.current_w//2,infoObject.current_h//2,20,20])
+        self.pika_srface             = Chaceable(
+                                    cv2.cvtColor(cv2.imread(self.pika_image), cv2.COLOR_BGR2RGB), 
+                                    rect=[np.random.randint(0,screensize[0]-pika_width),np.random.randint(0,screensize[1]-pika_height),pika_width,pika_height]
+                                )
+
+        self.addWidget(self.lbl_score)
+        self.addWidget(self.btn_stop)
+        self.addWidget(self.img_feed)
+
+        self.addWidget(self.pika_srface)
+        self.addWidget(self.cross_surface)
+        self.addWidget(self.pb_advance)
+        self.motion_stuf = self.build_timer(self.do_stuf,0.001)
+        self.motion_stuf.start()
+        self.curr_frame_time = time.time()
+        self.prev_frame_time = self.curr_frame_time
+        self.score  = 0
+
+    def do_stuf(self):
+        success, image = cap.read()
+        image = cv2.cvtColor(image[:,::-1,:], cv2.COLOR_BGR2RGB)#cv2.flip(, 1)
+        # Process the image to extract faces and draw the masks on the face in the image
+        fa.process(image)
+        game_ui_img =np.zeros((600,800,3))
+        if fa.nb_faces>0:
+            #for i in range(fa.nb_faces):
             i=0
             face = fa.faces[i]
             # Get head position and orientation compared to the reference pose (here the first frame will define the orientation 0,0,0)
@@ -250,21 +266,23 @@ while Running:
 
                 x = int((p2d[0]-p00[0])*screensize[0]/(p11[0]-p00[0]))
                 y = int((p2d[1]-p00[1])*screensize[1]/(p11[1]-p00[1]))
-                contact = pika_srface.check_contact((x,y))
+                contact = self.pika_srface.check_contact((x,y))
                 if contact and is_blink:
-                    pika_srface.setPosition((np.random.randint(0,screensize[0]-pika_width),np.random.randint(0,screensize[1]-pika_height)))
-                    score += 1
-                    lbl_score.setText(f"Score:{score}")
+                    self.pika_srface.setPosition((np.random.randint(0,screensize[0]-pika_width),np.random.randint(0,screensize[1]-pika_height)))
+                    self.score += 1
+                    self.lbl_score.setText(f"Score:{self.score}")
 
-                cross_surface.setPosition((x,y))
+                self.cross_surface.setPosition((x,y))
                 if is_blink:
                     pygame.mixer.Sound.play(piew_sound)
 
+        self.img_feed.setImage(image)
 
-    mouse = pygame.mouse.get_pos()
-    img_feed.setImage(image)
-    wm.process()
-    for event in wm.events:
-        if event.type == pygame.QUIT:
-            print("Done")
-            Running=False
+    def fn_quit(self):
+        self.Running=False
+    
+# =======================================================================
+
+if __name__=="__main__":
+    mw = MainWindow()
+    mw.loop()

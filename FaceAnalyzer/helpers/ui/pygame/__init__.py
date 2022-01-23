@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from urllib.request import urlopen
 
 import numpy as np
+import io
 
 # Initialize font
 pygame.font.init()
@@ -43,7 +44,7 @@ class WidgetStyle:
     bg_color: tuple = (100,100,100)
     border_color: tuple =(0,0,0)
     text_color: tuple = (0,0,0)
-    border_size: int = 1
+    border_size: int = 0
     font_name: str = 'freesansbold'
     font_size: int = 24
     x_margin: int = 0
@@ -61,7 +62,7 @@ class Widget():
     def __init__(
                     self,
                     rect:tuple=[0,0,100,50], 
-                    style:str="widget{background-color:#ffffff;}\n",
+                    style:str="widget{background-color:#a9a9a9;}\n",
                     extra_styles={}
                 ):
         """
@@ -74,7 +75,7 @@ extra_styles: A dictionary of additional CSS style properties
 to be applied to the widget.
         Args:
             rect (tuple, optional): A tuple of four numbers, representing the position of the widget. Defaults to [0,0,100,50].
-            style (str, optional):  A string containing the CSS style properties for the widget. Defaults to "widget{background-color:#ffffff;}\n".
+            style (str, optional):  A string containing the CSS style properties for the widget. Defaults to "widget{background-color:#a9a9a9;}\n".
             extra_styles (dict, optional): [description]. Defaults to {}.
         """
         self.setRect(rect)
@@ -130,6 +131,13 @@ to be applied to the widget.
         z = x.copy()   # start with keys and values of x
         z.update(y)    # modifies z with keys and values of y
         return z
+
+
+    def draw_rect(self, screen, style: WidgetStyle):
+        if style.bg_color is not None:
+            pygame.draw.rect(screen,style.bg_color,self.rect)
+        if style.border_size>0:
+            pygame.draw.rect(screen,style.border_color,self.rect, style.border_size)
 
     def setStyleSheet(self, style:str):
         """Sets the button stylesheet
@@ -200,7 +208,7 @@ to be applied to the widget.
         style = self.styles["widget"]
         if style.img is None:
             if style.bg_color is not None:
-                pygame.draw.rect(screen, style.bg_color, self.rect)
+                self.draw_rect(screen, style)
         else:
             screen.blit(pygame.transform.scale(style.img, (self.rect[2], self.rect[3])), (self.rect[0],self.rect[1]))
 
@@ -228,11 +236,14 @@ class Timer():
 # =============================================== Window Manager ==========================================
 
 class WindowManager():
-    def __init__(self, window_title:str="", resolution:tuple=(800,600)):
+    def __init__(self, window_title:str="", resolution:tuple=(800,600), is_rezisable:bool=True):
         """Builds a window managaer object
         """
         if resolution is not None:
-            self.screen = pygame.display.set_mode(resolution)
+            if is_rezisable:
+                self.screen = pygame.display.set_mode(resolution, pygame.RESIZABLE)
+            else:
+                self.screen = pygame.display.set_mode(resolution)
         else:
             self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
         pygame.display.set_caption(window_title)
@@ -324,7 +335,7 @@ class ImageBox(Widget):
                     self,
                     image:np.ndarray=None, 
                     rect:tuple=[0,0,800,600], 
-                    style:str="btn.normal{color:red; background-color:#ffffff;}\nbtn.hover{color:red; background-color:#ff0000};",
+                    style:str="btn.normal{color:white; background-color:#878787;}\nbtn.hover{color:white; background-color:#a9a9a9};\nbtn.pressed{color:red; background-color:#565656};",
                     clicked_event_handler=None,
                     color_key=None,
                     alpha=100
@@ -397,8 +408,7 @@ class Label(Widget):
         """
         style = self.styles["label"]
         if style.img is None:
-            if style.bg_color is not None:
-                pygame.draw.rect(screen, style.bg_color, self.rect)
+            self.draw_rect(screen, style)
         else:
             screen.blit(pygame.transform.scale(style.img, (self.rect[2], self.rect[3])), (self.rect[0],self.rect[1]))
 
@@ -411,7 +421,7 @@ class Button(Widget):
                     self,
                     text, 
                     rect:tuple=[0,0,100,50], 
-                    style:str="btn.normal{color:red; background-color:#ffffff;}\nbtn.hover{color:red; background-color:#ff0000};\nbtn.pressed{color:red; background-color:#ff0000};",
+                    style:str="btn.normal{color:white; background-color:#878787;}\nbtn.hover{color:white; background-color:#a9a9a9};\nbtn.pressed{color:red; background-color:#565656};",
                     extra_styles:dict={},
                     is_toggle=False,
                     clicked_event_handler=None,
@@ -478,8 +488,7 @@ class Button(Widget):
             style = self.styles["btn.normal"]
 
         if style.img is None:
-            if style.bg_color is not None:
-                pygame.draw.rect(screen,style.bg_color,self.rect)
+            self.draw_rect(screen, style)
         else:
             screen.blit(pygame.transform.scale(style.img, (self.rect[2], self.rect[3])), (self.rect[0],self.rect[1]))
         self.blit_text(style, screen)
@@ -521,7 +530,7 @@ class MenuBar(Widget):
     def __init__(
                 self,
                 parent:WindowManager,
-                style: str = "MenuBar{background-color:#ffffff;}\n"
+                style: str = "menu_bar{background-color:#878787;}\n"
     ):
         Widget.__init__(self,style=style, extra_styles={"menu_bar":WidgetStyle()})
         self.parent = parent
@@ -546,15 +555,14 @@ class MenuBar(Widget):
             h = 20
         self.setRect([0,0,w,h])
 
-        if style.bg_color is not None:
-            pygame.draw.rect(screen,style.bg_color,self.rect)
-        else:
-            pygame.draw.rect(screen,(0,0,0),self.rect)
+        self.draw_rect(screen, style)
 
-        rect_start = 0
+        rect_x_start = 0
+        rect_y_start=0
         for menu in self.menus:
             if menu.visible:
-                rect_start = menu.paint(screen,rect_start)
+                rect_x_start, rect_y_start = menu.prepare(rect_x_start, rect_y_start)
+                menu.paint(screen)
 
     def handle_events(self, events):
         for menu in self.menus:
@@ -569,7 +577,7 @@ class Menu(Button):
                 self,
                 parent:MenuBar,
                 caption="",
-                style:str="btn.normal{color:red; background-color:#ffffff;}\nbtn.hover{color:red; background-color:#ff0000};\nbtn.pressed{color:red; background-color:#ff0000};",
+                style:str="btn.normal{color:white; background-color:#878787;}\nbtn.hover{color:white; background-color:#a9a9a9};\nbtn.pressed{color:red; background-color:#565656};",
     ):
         Button.__init__(self, caption,style=style)
         self.parent = parent
@@ -590,8 +598,7 @@ class Menu(Button):
         action.visible=False
         self.actions.append(action)
 
-
-    def paint(self, screen, rect_start=0):
+    def prepare(self, rect_xstart=0, rect_ystart=0):
         style = self.styles["widget"]
         if style.height is not None:
             h = style.height
@@ -602,15 +609,19 @@ class Menu(Button):
         else:
             w = 100
 
-        self.setRect([rect_start,0,w, h])
+        self.setRect([rect_xstart,rect_ystart,w, h])
+
+        return rect_xstart + w, rect_ystart
+
+    def paint(self, screen):
+        style = self.styles["widget"]
         Button.paint(self, screen)
-        y=h
+        y=self.rect[1]+self.rect[3]
         for action in self.actions:
-            y = action.preprare(rect_start, y)
+            _, y = action.prepare(self.rect[0], y)
             if action.visible:
                 action.paint(screen)
 
-        return rect_start + w
 
 
     def handle_events(self, events):
@@ -627,14 +638,14 @@ class Action(Button):
                 self,
                 parent:Menu,
                 caption="",
-                style:str="btn.normal{color:red; background-color:#ffffff;}\nbtn.hover{color:red; background-color:#ff0000};\nbtn.pressed{color:red; background-color:#ff0000};",
+                style:str="btn.normal{color:white; background-color:#878787;}\nbtn.hover{color:white; background-color:#a9a9a9};\nbtn.pressed{color:red; background-color:#565656};",
     ):
         Button.__init__(self, caption,style=style)
         self.parent = parent
         self.actions=[]
         parent.addAction(self)
 
-    def preprare(self, rect_xstart=0, rect_ystart=0):
+    def prepare(self, rect_xstart=0, rect_ystart=0):
         style = self.styles["widget"]
         if style.height is not None:
             h = style.height
@@ -646,13 +657,42 @@ class Action(Button):
             w = 100
 
         self.setRect([rect_xstart,rect_ystart,w, h])        
-        return rect_ystart + w
+        return rect_xstart, rect_ystart + h
 
     def paint(self, screen):
         style = self.styles["widget"]
 
         Button.paint(self, screen)
 
+class MenuSeparator(Label):
+    def __init__(
+                self,
+                parent:Menu,
+                caption="",
+                style:str="label{color:white; background-color:#878787;}\n",
+    ):
+        Button.__init__(self, caption,style=style)
+        self.parent = parent
+        self.actions=[]
+        parent.addAction(self)
+
+    def prepare(self, rect_xstart=0, rect_ystart=0):
+        style = self.styles["label"]
+        if style.height is not None:
+            h = style.height
+        else:
+            h = 2
+        if style.width is not None:
+            w = style.width
+        else:
+            w = 100
+
+        self.setRect([rect_xstart,rect_ystart,w, h])        
+        return rect_ystart + w
+
+    def paint(self, screen):
+        style = self.styles["widget"]
+        self.draw_rect(screen, style)
 
 
 
@@ -695,14 +735,17 @@ class ProgressBar(Widget):
         outer_style = self.styles["brogressbar.outer"]
         inner_style = self.styles["brogressbar.inner"]
         if outer_style.img is None:
-            if outer_style.bg_color is not None:
-                pygame.draw.rect(screen,outer_style.bg_color,self.rect)
+            self.draw_rect(screen, outer_style)
         else:
             screen.blit(pygame.transform.scale(outer_style.img, (self.rect[2], self.rect[3])), (self.rect[0],self.rect[1]))
         
         if inner_style.img is None:
+            self.draw_rect(screen, inner_style)
             if inner_style.bg_color is not None:
                 pygame.draw.rect(screen,inner_style.bg_color,[self.rect[0], self.rect[1], self.rect[2]*self.value, self.rect[3]])
+            if inner_style.border_size>0:
+                pygame.draw.rect(screen,inner_style.border_color,[self.rect[0], self.rect[1], self.rect[2]*self.value, self.rect[3]], inner_style.border_size)
+
         else:
             screen.blit(pygame.transform.scale(inner_style.img, (self.rect[2], self.rect[3])), (self.rect[0],self.rect[1]))
         
