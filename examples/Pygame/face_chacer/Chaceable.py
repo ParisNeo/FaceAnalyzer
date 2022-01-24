@@ -22,7 +22,7 @@ class Chaceable(ImageBox):
             normal_color (tuple, optional): The normal color of the cheaceable. Defaults to (255,255,255).
             highlight_color (tuple, optional): The hilight color of the chaceable. Defaults to (0,255,0).
         """
-        ImageBox.__init__(self, image, rect, color_key=(0,0,0), alpha=100)
+        ImageBox.__init__(self, image, None, rect, color_key=(0,0,0), alpha=100)
         self.is_contact=False
     
     def move_to(self, position_2d:np.ndarray)->None:

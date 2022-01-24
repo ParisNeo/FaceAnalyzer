@@ -112,6 +112,7 @@ def template_label(title,rect):
     # build button
     return Label(
         title,
+        None,
         rect,
     style="""
         label{
@@ -134,6 +135,7 @@ def template_button(title, rect, is_togle=False, clicked_event_handler=None):
     # build button
     return Button(
         title,
+        None,
         rect,
     style="""
         btn.normal{
@@ -167,6 +169,7 @@ def template_progressbar(rect):
     
     # build button
     return ProgressBar(
+        None,
         rect,
     style="""
         brogressbar.outer{

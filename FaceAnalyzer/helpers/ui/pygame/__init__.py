@@ -55,13 +55,13 @@ class WidgetStyle:
     img:str = None
 
 
-
 # =============================================== Widget ==========================================
 
 class Widget():
     def __init__(
                     self,
-                    rect:tuple=[0,0,100,50], 
+                    parent=None,
+                    rect:tuple=None, 
                     style:str="widget{background-color:#a9a9a9;}\n",
                     extra_styles={}
                 ):
@@ -78,12 +78,23 @@ to be applied to the widget.
             style (str, optional):  A string containing the CSS style properties for the widget. Defaults to "widget{background-color:#a9a9a9;}\n".
             extra_styles (dict, optional): [description]. Defaults to {}.
         """
-        self.setRect(rect)
+        if rect is not None:
+            self.setRect(rect)
+        else:
+            self.rect = None
+            self.rect2 = None
+
+        self.parent = parent
         self.visible = True
         self.styles=self.merge_two_dicts({
             "widget":WidgetStyle()
         }, extra_styles)
         self.setStyleSheet(style)
+
+    def setParent(self, parent):
+        self.parent = parent
+        if self.parent is not None and self.rect is None:
+            self.setRect(self.parent.rect)
 
     def setPosition(self, pos:list):
         """Sets the position of the rectangle.
@@ -215,6 +226,78 @@ to be applied to the widget.
     def handle_events(self, events):
         pass
 
+class Layout(Widget):
+    def __init__(self, parent=None, rect: tuple = None, style: str = "widget{background-color:#a9a9a9;}\n", extra_styles={}):
+        super().__init__(parent, rect, style, extra_styles)
+        self.parent = parent
+        self.widgets=[]
+    def addWidget(self, widget:Widget):
+        self.widgets.append(widget)
+
+class HorizontalLayout(Layout):
+    def __init__(self, parent=None, rect: tuple = None, style: str = "widget{background-color:#a9a9a9;}\n", extra_styles={}):
+        super().__init__(parent, rect, style, extra_styles)
+
+    def addWidget(self, widget:Widget, percent=None):
+        self.widgets.append([percent, widget])
+        widget.parent = self
+
+    def paint(self, screen):
+        l = len(self.widgets)
+        if self.rect is None:
+            x = self.parent.rect[0]
+            y = self.parent.rect[1]
+            w = self.parent.rect[2]
+            h = self.parent.rect[3]
+        else:
+            x = self.rect[0]
+            y = self.rect[1]
+            w = self.rect[2]
+            h = self.rect[3]
+        for percent, widget in self.widgets:
+            if percent is None:
+                percent=1/l            
+            widget.setRect([x,y,int(w*percent),h])
+            x += int(w*percent)
+            widget.paint(screen)
+
+    def handle_events(self, events):
+        for percent, widget in self.widgets:
+            widget.handle_events(events)
+
+
+class VerticalLayout(Layout):
+    def __init__(self, parent=None, rect: tuple = None, style: str = "widget{background-color:#a9a9a9;}\n", extra_styles={}):
+        super().__init__(parent, rect, style, extra_styles)
+
+    def addWidget(self, widget:Widget, percent=None):
+        self.widgets.append([percent, widget])
+        widget.parent = self
+
+    def paint(self, screen):
+        l = len(self.widgets)
+        if self.rect is None:
+            x = self.parent.rect[0]
+            y = self.parent.rect[1]
+            w = self.parent.rect[2]
+            h = self.parent.rect[3]
+        else:
+            x = self.rect[0]
+            y = self.rect[1]
+            w = self.rect[2]
+            h = self.rect[3]
+        for percent, widget in self.widgets:
+            if percent is None:
+                percent=1/l            
+            widget.setRect([x,y,w,int(h*percent)])
+            y += int(h*percent)
+            widget.paint(screen)
+
+    def handle_events(self, events):
+        for percent, widget in self.widgets:
+            widget.handle_events(events)
+
+
 # =============================================== Timer ==========================================
 class Timer():
     def __init__(self, callback_fn, intrval_s:float=0.1) -> None:
@@ -252,6 +335,7 @@ class WindowManager():
         self.Running = True
         self.timers=[]
         self.menu = None
+        self.update_rect()
 
 
     def build_menu_bar(self):
@@ -267,6 +351,13 @@ class WindowManager():
         self.timers.append(timer)
         return timer
 
+    def update_rect(self):
+        w, h = pygame.display.get_surface().get_size()
+        if self.menu is not None:
+            self.rect = [0,self.menu.height,w,h]
+        else:
+            self.rect = [0,0,w,h]
+
     def addWidget(self, widget:Widget):
         """Adds a new widget to the widgets list
 
@@ -274,10 +365,15 @@ class WindowManager():
             widget (Widget): The widget to be added
         """
         self.widgets.append(widget)
+        widget.parent = self
     
     def process(self, background_color:tuple = (0,0,0)):
         self.screen.fill(background_color)
         self.events = pygame.event.get()
+        for event in self.events:
+            if event.type == pygame.VIDEORESIZE:
+                self.update_rect()
+
         for widget in self.widgets:
             if widget.visible:
                 widget.paint(self.screen)
@@ -310,10 +406,11 @@ class Sprite(Widget):
     def __init__(
                     self,
                     image_path:str, 
+                    parent=None,
                     rect:tuple=[0,0,800,600], 
                     clicked_event_handler=None
                 ):
-        Widget.__init__(self,rect, style=
+        Widget.__init__(self,parent,rect, style=
 """
     widget{
 """
@@ -334,13 +431,14 @@ class ImageBox(Widget):
     def __init__(
                     self,
                     image:np.ndarray=None, 
+                    parent=None,
                     rect:tuple=[0,0,800,600], 
                     style:str="btn.normal{color:white; background-color:#878787;}\nbtn.hover{color:white; background-color:#a9a9a9};\nbtn.pressed{color:red; background-color:#565656};",
                     clicked_event_handler=None,
                     color_key=None,
                     alpha=100
                 ):
-        Widget.__init__(self,rect, style,extra_styles={"label":WidgetStyle()})
+        Widget.__init__(self,parent,rect, style,extra_styles={"label":WidgetStyle()})
         self.color_key = color_key
         self.alpha = alpha
         if image is not None:
@@ -366,11 +464,12 @@ class Label(Widget):
     def __init__(
                     self,
                     text, 
+                    parent=None,
                     rect:tuple=[0,0,100,50], 
                     style:str="label{color:black; background-color:#ffffff;}\n",
                     clicked_event_handler=None
                 ):
-        Widget.__init__(self, rect, style,extra_styles={"label":WidgetStyle()})
+        Widget.__init__(self, parent, rect, style,extra_styles={"label":WidgetStyle()})
         self.text = text
         self.hovered=False
         self.pressed=False
@@ -419,7 +518,8 @@ class Label(Widget):
 class Button(Widget):
     def __init__(
                     self,
-                    text, 
+                    text,
+                    parent=None,
                     rect:tuple=[0,0,100,50], 
                     style:str="btn.normal{color:white; background-color:#878787;}\nbtn.hover{color:white; background-color:#a9a9a9};\nbtn.pressed{color:red; background-color:#565656};",
                     extra_styles:dict={},
@@ -429,6 +529,7 @@ class Button(Widget):
                 ):
         Widget.__init__(
                         self,
+                        parent,
                         rect,
                         style,
                         self.merge_two_dicts({
@@ -523,6 +624,65 @@ class Button(Widget):
 
 
 
+
+# =============================================== ProgressBar ==========================================
+
+class ProgressBar(Widget):
+    def __init__(
+                self, 
+                parent=None,
+                rect: tuple = [0, 0, 100, 50], 
+                style: str = "brogressbar.outer{background-color:#ffffff;}\nbrogressbar.inner{background-color:#ffffff;}", 
+                value=0
+            ):
+        """Builds a progressbar widget
+
+        Args:
+            rect (tuple, optional): Rectangle where to put the progressbar. Defaults to [0, 0, 100, 50].
+            style (str, optional): [description]. Defaults to "brogressbar.outer{background-color:#ffffff;}\nbrogressbar.inner{background-color:#ffffff;}".
+            value (int, optional): [description]. Defaults to 0.
+        """
+        super().__init__(
+                            parent,
+                            rect=rect, 
+                            style=style, 
+                            extra_styles={
+                                "brogressbar.outer":WidgetStyle(),
+                                "brogressbar.inner":WidgetStyle(),
+                            }
+                        )
+        self.value=value
+
+    def setValue(self, value):
+        self.value = value            
+
+    def paint(self, screen):
+        """Paints the button
+
+        Args:
+            screen ([type]): The screen on which to blit
+        """
+                          
+        outer_style = self.styles["brogressbar.outer"]
+        inner_style = self.styles["brogressbar.inner"]
+        if outer_style.img is None:
+            self.draw_rect(screen, outer_style)
+        else:
+            screen.blit(pygame.transform.scale(outer_style.img, (self.rect[2], self.rect[3])), (self.rect[0],self.rect[1]))
+        
+        if inner_style.img is None:
+            self.draw_rect(screen, inner_style)
+            if inner_style.bg_color is not None:
+                pygame.draw.rect(screen,inner_style.bg_color,[self.rect[0], self.rect[1], self.rect[2]*self.value, self.rect[3]])
+            if inner_style.border_size>0:
+                pygame.draw.rect(screen,inner_style.border_color,[self.rect[0], self.rect[1], self.rect[2]*self.value, self.rect[3]], inner_style.border_size)
+
+        else:
+            screen.blit(pygame.transform.scale(inner_style.img, (self.rect[2], self.rect[3])), (self.rect[0],self.rect[1]))
+        
+
+
+
 # =============================================== Menus ==========================================
 # ---------------------------------------------------- Menu Bar -----------------------------------------------------
 
@@ -532,14 +692,28 @@ class MenuBar(Widget):
                 parent:WindowManager,
                 style: str = "menu_bar{background-color:#878787;}\n"
     ):
-        Widget.__init__(self,style=style, extra_styles={"menu_bar":WidgetStyle()})
+        Widget.__init__(self,parent,style=style, extra_styles={"menu_bar":WidgetStyle()})
         self.parent = parent
-        self.rect = self.parent
         self.menus=[]
         self.setStyleSheet(style)
 
     def addMenu(self, menu):
         self.menus.append(menu)
+
+    @property
+    def width(self):
+        w, h = pygame.display.get_surface().get_size()
+        return w
+
+    @property
+    def height(self):
+        style = self.styles["menu_bar"]
+        w, h = pygame.display.get_surface().get_size()
+        if style.height is not None:
+            h = style.height
+        else:
+            h = 20
+        return h
 
     def paint(self, screen):
         """Paints the manue
@@ -695,57 +869,3 @@ class MenuSeparator(Label):
         self.draw_rect(screen, style)
 
 
-
-# =============================================== ProgressBar ==========================================
-
-class ProgressBar(Widget):
-    def __init__(
-                self, 
-                rect: tuple = [0, 0, 100, 50], 
-                style: str = "brogressbar.outer{background-color:#ffffff;}\nbrogressbar.inner{background-color:#ffffff;}", 
-                value=0
-            ):
-        """Builds a progressbar widget
-
-        Args:
-            rect (tuple, optional): Rectangle where to put the progressbar. Defaults to [0, 0, 100, 50].
-            style (str, optional): [description]. Defaults to "brogressbar.outer{background-color:#ffffff;}\nbrogressbar.inner{background-color:#ffffff;}".
-            value (int, optional): [description]. Defaults to 0.
-        """
-        super().__init__(
-                            rect=rect, 
-                            style=style, 
-                            extra_styles={
-                                "brogressbar.outer":WidgetStyle(),
-                                "brogressbar.inner":WidgetStyle(),
-                            }
-                        )
-        self.value=value
-
-    def setValue(self, value):
-        self.value = value            
-
-    def paint(self, screen):
-        """Paints the button
-
-        Args:
-            screen ([type]): The screen on which to blit
-        """
-                          
-        outer_style = self.styles["brogressbar.outer"]
-        inner_style = self.styles["brogressbar.inner"]
-        if outer_style.img is None:
-            self.draw_rect(screen, outer_style)
-        else:
-            screen.blit(pygame.transform.scale(outer_style.img, (self.rect[2], self.rect[3])), (self.rect[0],self.rect[1]))
-        
-        if inner_style.img is None:
-            self.draw_rect(screen, inner_style)
-            if inner_style.bg_color is not None:
-                pygame.draw.rect(screen,inner_style.bg_color,[self.rect[0], self.rect[1], self.rect[2]*self.value, self.rect[3]])
-            if inner_style.border_size>0:
-                pygame.draw.rect(screen,inner_style.border_color,[self.rect[0], self.rect[1], self.rect[2]*self.value, self.rect[3]], inner_style.border_size)
-
-        else:
-            screen.blit(pygame.transform.scale(inner_style.img, (self.rect[2], self.rect[3])), (self.rect[0],self.rect[1]))
-        
