@@ -78,11 +78,7 @@ to be applied to the widget.
             style (str, optional):  A string containing the CSS style properties for the widget. Defaults to "widget{background-color:#a9a9a9;}\n".
             extra_styles (dict, optional): [description]. Defaults to {}.
         """
-        if rect is not None:
-            self.setRect(rect)
-        else:
-            self.rect = None
-            self.rect2 = None
+
 
         self.parent = parent
         self.visible = True
@@ -90,6 +86,11 @@ to be applied to the widget.
             "widget":WidgetStyle()
         }, extra_styles)
         self.setStyleSheet(style)
+        if rect is not None:
+            self.setRect(rect)
+        else:
+            self.rect = None
+            self.rect2 = None        
 
     def setParent(self, parent):
         self.parent = parent
@@ -169,18 +170,22 @@ to be applied to the widget.
                     if property.name == 'width':
                         v = property.value
                         if v is not None:
-                            style.width = v
+                            style.width = int(v)
 
                     if property.name == 'height':
                         v = property.value
                         if v is not None:
-                            style.width = v
+                            style.height = int(v)
 
                     if property.name == 'color':
                         v = get_color(property.value)
                         if v is not None:
                             style.text_color = v
                                                  
+                    
+                    if property.name == 'border-size':
+                        style.border_size = int(property.value)
+                        
                     if property.name == 'background-image':
                         bgi = property.value.strip()
                         if bgi.startswith("url"):
@@ -681,6 +686,119 @@ class ProgressBar(Widget):
             screen.blit(pygame.transform.scale(inner_style.img, (self.rect[2], self.rect[3])), (self.rect[0],self.rect[1]))
         
 
+
+class Slider(Widget):
+    def __init__(
+                self, 
+                parent=None,
+                rect: tuple = [0, 0, 100, 50], 
+                style: str = "slider.outer{background-color:#878787;}\slider.inner.normal{color:white; background-color:#a7a7a7;}\nslider.inner.hover{color:white; background-color:#c6c6c6};\nslider.inner.pressed{color:red; background-color:#565656};", 
+                value=0,
+                valueChanged_callback=None,
+                mouse_down_callback=None
+            ):
+        """Builds a progressbar widget
+
+        Args:
+            rect (tuple, optional): Rectangle where to put the progressbar. Defaults to [0, 0, 100, 50].
+            style (str, optional): [description]. Defaults to "slider.outer{background-color:#ffffff;}\nslider.inner{background-color:#ffffff;}".
+            value (int, optional): [description]. Defaults to 0.
+        """
+        super().__init__(
+                            parent,
+                            rect=rect, 
+                            style=style, 
+                            extra_styles={
+                                "slider.outer":WidgetStyle(),
+                                "slider.inner.normal":WidgetStyle(),
+                                "slider.inner.hover":WidgetStyle(),
+                                "slider.inner.pressed":WidgetStyle(),
+                            }
+                        )
+        if self.styles["slider.inner.normal"].width is None:
+            self.styles["slider.inner.normal"].width = 20
+        if self.styles["slider.inner.hover"].width is None:
+            self.styles["slider.inner.hover"].width = 20
+        if self.styles["slider.inner.pressed"].width is None:
+            self.styles["slider.inner.pressed"].width = 20
+        self.is_toggle = False
+        self.setValue(value)
+        self.hovered=False
+        self.pressed=False
+        self.valueChanged_callback = valueChanged_callback
+        self.mouse_down_callback = mouse_down_callback
+
+    def setValue(self, value):
+        self.value = value            
+        inner_style = self.styles["slider.inner.normal"]
+        self.slider_rect= [self.rect[0]+self.rect[2]*self.value-inner_style.width//2, self.rect[1], inner_style.width, self.rect[3]]
+        self.slider_rect2 = (self.slider_rect[0],self.slider_rect[1],self.slider_rect[0]+self.slider_rect[2],self.slider_rect[1]+self.slider_rect[3])
+
+    def setRect(self, rect):
+        self.rect=rect
+        self.rect2 = (rect[0],rect[1],rect[0]+rect[2],rect[1]+rect[3])
+        inner_style = self.styles["slider.inner.normal"]
+        if inner_style.width is not None:            
+            self.slider_rect= [self.rect[0]+self.rect[2]*self.value-inner_style.width//2, self.rect[1], inner_style.width, self.rect[3]]
+            self.slider_rect2 = (self.slider_rect[0],self.slider_rect[1],self.slider_rect[0]+self.slider_rect[2],self.slider_rect[1]+self.slider_rect[3])
+
+    def paint(self, screen):
+        """Paints the button
+
+        Args:
+            screen ([type]): The screen on which to blit
+        """
+          
+        outer_style = self.styles["slider.outer"]
+        if self.hovered:
+            inner_style = self.styles["slider.inner.hover"]
+        else:
+            inner_style = self.styles["slider.inner.normal"]
+        if outer_style.img is None:
+            self.draw_rect(screen, outer_style)
+        else:
+            screen.blit(pygame.transform.scale(outer_style.img, (self.rect[2], self.rect[3])), (self.rect[0],self.rect[1]))
+        
+        if inner_style.img is None:
+            if inner_style.bg_color is not None:
+                pygame.draw.rect(screen,inner_style.bg_color,self.slider_rect)
+            if inner_style.border_size>0:
+                pygame.draw.rect(screen,inner_style.border_color,self.slider_rect, inner_style.border_size)
+        else:
+            screen.blit(pygame.transform.scale(inner_style.img, (self.rect[2], self.rect[3])), (self.rect[0],self.rect[1]))
+
+    def handle_events(self, events):
+        """Handles the events
+
+        """
+        for event in events:
+            if event.type == pygame.MOUSEMOTION:
+                self.hovered = is_point_inside_rect(event.pos,self.slider_rect2)
+                if self.pressed:
+                    self.value = min(max(0,(event.pos[0]-self.rect[0])/self.rect[2]),1)
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                self.hovered = is_point_inside_rect(event.pos,self.slider_rect2)
+                if self.hovered == True:
+                    if self.is_toggle:
+                        if not self.toggled:
+                            self.pressed=not self.pressed
+                            self.toggled=True
+                    else:
+                        self.pressed=True
+                    if self.pressed:
+                        if self.mouse_down_callback is not None:
+                            self.mouse_down_callback()
+
+
+
+                
+
+            elif event.type == pygame.MOUSEBUTTONUP:
+                if not self.is_toggle:
+                    self.pressed=False
+                self.toggled=False
+                if self.valueChanged_callback is not None:
+                    self.valueChanged_callback(self.value)    
 
 
 # =============================================== Menus ==========================================
