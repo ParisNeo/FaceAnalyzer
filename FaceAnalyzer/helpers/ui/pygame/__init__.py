@@ -6,7 +6,6 @@
     Description :
         User interface helpers
 <================"""
-from code import interact
 import time
 import pygame
 import cssutils
@@ -21,6 +20,10 @@ import io
 
 # Initialize font
 pygame.font.init()
+
+# Define orientations
+Horizontal  = 0
+Vertical    = 1
 
 @dataclass
 class WidgetStyle:
@@ -43,6 +46,7 @@ class WidgetStyle:
     font : pygame.font.Font = pygame.font.Font('freesansbold.ttf', 14)
     bg_color: tuple = (100,100,100)
     border_color: tuple =(0,0,0)
+    border_radius: float = 0
     text_color: tuple = (0,0,0)
     border_size: int = 0
     font_name: str = 'freesansbold'
@@ -145,11 +149,31 @@ to be applied to the widget.
         return z
 
 
-    def draw_rect(self, screen, style: WidgetStyle):
+    def draw_rect(self, screen, style: WidgetStyle, rect:tuple=None):
+        if rect is None:
+            rect = self.rect
         if style.bg_color is not None:
-            pygame.draw.rect(screen,style.bg_color,self.rect)
+            pygame.draw.rect(screen,style.bg_color,rect, border_radius = style.border_radius)
         if style.border_size>0:
-            pygame.draw.rect(screen,style.border_color,self.rect, style.border_size)
+            pygame.draw.rect(screen,style.border_color,rect, style.border_size, border_radius = style.border_radius)
+
+    def blit_text(self, text, style:WidgetStyle, screen, rect:tuple=None):
+        """Blits button text using a css style
+
+        Args:
+            style (WidgetStyle): The style to be used
+            screen ([type]): The screen on which to blit
+        """
+        if rect is None:
+            rect = self.rect
+        text_render = style.font.render(text,True, style.text_color)
+        if style.align =='center':
+            screen.blit(text_render,(rect[0]+rect[2]//2-text_render.get_width()//2,rect[1]+rect[3]//2-text_render.get_height()//2))   
+        elif style.align =='left':
+            screen.blit(text_render,(rect[0]+style.x_margin,rect[1]+rect[3]//2-text_render.get_height()//2))   
+        elif style.align =='right':
+            screen.blit(text_render,(rect[0]+rect[2]-text_render.get_width(),rect[1]+rect[3]//2-text_render.get_height()//2))   
+
 
     def setStyleSheet(self, style:str):
         """Sets the button stylesheet
@@ -185,6 +209,9 @@ to be applied to the widget.
                     
                     if property.name == 'border-size':
                         style.border_size = int(property.value)
+                    if property.name == 'border-radius':
+                        style.border_radius = int(property.value)
+                        
                         
                     if property.name == 'background-image':
                         bgi = property.value.strip()
@@ -471,7 +498,7 @@ class Label(Widget):
                     text, 
                     parent=None,
                     rect:tuple=[0,0,100,50], 
-                    style:str="label{color:black; background-color:#ffffff;}\n",
+                    style:str="",
                     clicked_event_handler=None
                 ):
         Widget.__init__(self, parent, rect, style,extra_styles={"label":WidgetStyle()})
@@ -489,20 +516,6 @@ class Label(Widget):
         """
         self.text = text
 
-    def blit_text(self, style:WidgetStyle, screen):
-        """Blits button text using a css style
-
-        Args:
-            style (WidgetStyle): The style to be used
-            screen ([type]): The screen on which to blit
-        """
-        text_render = style.font.render(self.text,True, style.text_color)
-        if style.align =='center':
-            screen.blit(text_render,(self.rect[0]+self.rect[2]//2-text_render.get_width()//2,self.rect[1]+self.rect[3]//2-text_render.get_height()//2))   
-        elif style.align =='left':
-            screen.blit(text_render,(self.rect[0]+style.x_margin,self.rect[1]+self.rect[3]//2-text_render.get_height()//2))   
-        elif style.align =='right':
-            screen.blit(text_render,(self.rect[0]+self.rect[2]-text_render.get_width(),self.rect[1]+self.rect[3]//2-text_render.get_height()//2))   
 
     def paint(self, screen):
         """Paints the button
@@ -516,7 +529,7 @@ class Label(Widget):
         else:
             screen.blit(pygame.transform.scale(style.img, (self.rect[2], self.rect[3])), (self.rect[0],self.rect[1]))
 
-        self.blit_text(style, screen)
+        self.blit_text(self.text,style, screen)
 
 # =============================================== Button ==========================================
 
@@ -526,7 +539,7 @@ class Button(Widget):
                     text,
                     parent=None,
                     rect:tuple=[0,0,100,50], 
-                    style:str="btn.normal{color:white; background-color:#878787;}\nbtn.hover{color:white; background-color:#a9a9a9};\nbtn.pressed{color:red; background-color:#565656};",
+                    style:str="",
                     extra_styles:dict={},
                     is_toggle=False,
                     clicked_event_handler=None,
@@ -538,9 +551,9 @@ class Button(Widget):
                         rect,
                         style,
                         self.merge_two_dicts({
-                            "btn.normal":WidgetStyle(),
-                            "btn.hover":WidgetStyle(),
-                            "btn.pressed":WidgetStyle(),
+                            "btn.normal":WidgetStyle(border_radius=4,text_color=(255,255,255), bg_color=get_color("#878787")),
+                            "btn.hover":WidgetStyle(border_radius=4,text_color=(255,255,255), bg_color=get_color("#a9a9a9")),
+                            "btn.pressed":WidgetStyle(border_radius=4,text_color=(255,255,255), bg_color=get_color("#565656")),
                         }, extra_styles)
                         )
 
@@ -564,21 +577,6 @@ class Button(Widget):
         """
         self.text = text
 
-    def blit_text(self, style:WidgetStyle, screen):
-        """Blits button text using a css style
-
-        Args:
-            style (WidgetStyle): The style to be used
-            screen ([type]): The screen on which to blit
-        """
-        text_render = style.font.render(self.text,True, style.text_color)
-        if style.align =='center':
-            screen.blit(text_render,(self.rect[0]+self.rect[2]//2-text_render.get_width()//2,self.rect[1]+self.rect[3]//2-text_render.get_height()//2))   
-        elif style.align =='left':
-            screen.blit(text_render,(self.rect[0]+style.x_margin,self.rect[1]+self.rect[3]//2-text_render.get_height()//2))   
-        elif style.align =='right':
-            screen.blit(text_render,(self.rect[0]+self.rect[2]-text_render.get_width(),self.rect[1]+self.rect[3]//2-text_render.get_height()//2))   
-
     def paint(self, screen):
         """Paints the button
 
@@ -597,7 +595,7 @@ class Button(Widget):
             self.draw_rect(screen, style)
         else:
             screen.blit(pygame.transform.scale(style.img, (self.rect[2], self.rect[3])), (self.rect[0],self.rect[1]))
-        self.blit_text(style, screen)
+        self.blit_text(self.text, style, screen)
 
     def handle_events(self, events):
         """Handles the events
@@ -692,8 +690,9 @@ class Slider(Widget):
                 self, 
                 parent=None,
                 rect: tuple = [0, 0, 100, 50], 
-                style: str = "slider.outer{background-color:#878787;}\slider.inner.normal{color:white; background-color:#a7a7a7;}\nslider.inner.hover{color:white; background-color:#c6c6c6};\nslider.inner.pressed{color:red; background-color:#565656};", 
+                style: str = "", 
                 value=0,
+                orientation=Horizontal,
                 valueChanged_callback=None,
                 mouse_down_callback=None
             ):
@@ -701,46 +700,65 @@ class Slider(Widget):
 
         Args:
             rect (tuple, optional): Rectangle where to put the progressbar. Defaults to [0, 0, 100, 50].
-            style (str, optional): [description]. Defaults to "slider.outer{background-color:#ffffff;}\nslider.inner{background-color:#ffffff;}".
+            style (str, optional): [description]. Defaults to "slider.outer{background-color:#ffffff;}\nslider.selector{background-color:#ffffff;}".
             value (int, optional): [description]. Defaults to 0.
         """
-        super().__init__(
-                            parent,
-                            rect=rect, 
-                            style=style, 
-                            extra_styles={
-                                "slider.outer":WidgetStyle(),
-                                "slider.inner.normal":WidgetStyle(),
-                                "slider.inner.hover":WidgetStyle(),
-                                "slider.inner.pressed":WidgetStyle(),
-                            }
-                        )
-        if self.styles["slider.inner.normal"].width is None:
-            self.styles["slider.inner.normal"].width = 20
-        if self.styles["slider.inner.hover"].width is None:
-            self.styles["slider.inner.hover"].width = 20
-        if self.styles["slider.inner.pressed"].width is None:
-            self.styles["slider.inner.pressed"].width = 20
+        self.value = 0
+        self.orientation = orientation
+        if self.orientation == Horizontal:
+            super().__init__(
+                                parent,
+                                rect=rect, 
+                                style=style, 
+                                extra_styles={
+                                    "slider.outer":WidgetStyle(border_size=3,border_radius=3, text_color=get_color("white"),bg_color=get_color("#878787")),
+                                    "slider.selector.normal":WidgetStyle(border_size=1,border_radius=15, text_color=get_color("white"),bg_color=get_color("#a7a7a7"), width=20),
+                                    "slider.selector.hover":WidgetStyle(border_size=1,border_radius=15, text_color=get_color("white"),bg_color=get_color("#c6c6c6"), width=20),
+                                    "slider.selector.pressed":WidgetStyle(border_size=1,border_radius=15, text_color=get_color("white"),bg_color=get_color("#565656"), width=20),
+                                }
+                            )
+        else:
+            super().__init__(
+                                parent,
+                                rect=rect, 
+                                style=style, 
+                                extra_styles={
+                                    "slider.outer":WidgetStyle(border_size=3,border_radius=3, text_color=get_color("white"),bg_color=get_color("#878787")),
+                                    "slider.selector.normal":WidgetStyle(border_size=1,border_radius=15, text_color=get_color("white"),bg_color=get_color("#a7a7a7"), height=20),
+                                    "slider.selector.hover":WidgetStyle(border_size=1,border_radius=15, text_color=get_color("white"),bg_color=get_color("#c6c6c6"), height=20),
+                                    "slider.selector.pressed":WidgetStyle(border_size=1,border_radius=15, text_color=get_color("white"),bg_color=get_color("#565656"), height=20),
+                                }
+                            )
         self.is_toggle = False
         self.setValue(value)
         self.hovered=False
+        self.selector_hovered=False
         self.pressed=False
         self.valueChanged_callback = valueChanged_callback
         self.mouse_down_callback = mouse_down_callback
 
     def setValue(self, value):
         self.value = value            
-        inner_style = self.styles["slider.inner.normal"]
-        self.slider_rect= [self.rect[0]+self.rect[2]*self.value-inner_style.width//2, self.rect[1], inner_style.width, self.rect[3]]
-        self.slider_rect2 = (self.slider_rect[0],self.slider_rect[1],self.slider_rect[0]+self.slider_rect[2],self.slider_rect[1]+self.slider_rect[3])
+        inner_style = self.styles["slider.selector.normal"]
+        if self.orientation == Horizontal:
+            self.slider_rect= [self.rect[0]+(self.rect[2]-inner_style.width)*self.value, self.rect[1], inner_style.width, self.rect[3]]
+            self.slider_rect2 = (self.slider_rect[0],self.slider_rect[1],self.slider_rect[0]+self.slider_rect[2],self.slider_rect[1]+self.slider_rect[3])
+        else:
+            self.slider_rect= [self.rect[0], self.rect[1]+(self.rect[3]-inner_style.height)*self.value, self.rect[2], inner_style.height]
+            self.slider_rect2 = (self.slider_rect[0],self.slider_rect[1],self.slider_rect[0]+self.slider_rect[2],self.slider_rect[1]+self.slider_rect[3])
 
     def setRect(self, rect):
         self.rect=rect
         self.rect2 = (rect[0],rect[1],rect[0]+rect[2],rect[1]+rect[3])
-        inner_style = self.styles["slider.inner.normal"]
-        if inner_style.width is not None:            
-            self.slider_rect= [self.rect[0]+self.rect[2]*self.value-inner_style.width//2, self.rect[1], inner_style.width, self.rect[3]]
-            self.slider_rect2 = (self.slider_rect[0],self.slider_rect[1],self.slider_rect[0]+self.slider_rect[2],self.slider_rect[1]+self.slider_rect[3])
+        inner_style = self.styles["slider.selector.normal"]
+        if self.orientation == Horizontal:
+            if inner_style.width is not None:            
+                self.slider_rect= [self.rect[0]+(self.rect[2]-inner_style.width)*self.value, self.rect[1], inner_style.width, self.rect[3]]
+                self.slider_rect2 = (self.slider_rect[0],self.slider_rect[1],self.slider_rect[0]+self.slider_rect[2],self.slider_rect[1]+self.slider_rect[3])
+        else:
+            if inner_style.height is not None:            
+                self.slider_rect= [self.rect[0], self.rect[1]+(self.rect[3]-inner_style.height)*self.value, self.rect[2], inner_style.height]
+                self.slider_rect2 = (self.slider_rect[0],self.slider_rect[1],self.slider_rect[0]+self.slider_rect[2],self.slider_rect[1]+self.slider_rect[3])
 
     def paint(self, screen):
         """Paints the button
@@ -750,22 +768,37 @@ class Slider(Widget):
         """
           
         outer_style = self.styles["slider.outer"]
-        if self.hovered:
-            inner_style = self.styles["slider.inner.hover"]
+        if self.selector_hovered:
+            inner_style = self.styles["slider.selector.hover"]
         else:
-            inner_style = self.styles["slider.inner.normal"]
-        if outer_style.img is None:
-            self.draw_rect(screen, outer_style)
+            inner_style = self.styles["slider.selector.normal"]
+
+        if self.orientation == Horizontal:
+            if outer_style.img is None:
+                self.draw_rect(screen, outer_style,[self.rect[0],self.rect[1]+5,self.rect[2],self.rect[3]-10])
+            else:
+                screen.blit(pygame.transform.scale(outer_style.img, (self.rect[2], self.rect[3])), (self.rect[0],self.rect[1]))
+            
+            if inner_style.img is None:
+                if inner_style.bg_color is not None:
+                    pygame.draw.rect(screen,inner_style.bg_color,self.slider_rect, border_radius = inner_style.border_radius)
+                if inner_style.border_size>0:
+                    pygame.draw.rect(screen,inner_style.border_color,self.slider_rect, inner_style.border_size, border_radius = inner_style.border_radius)
+            else:
+                screen.blit(pygame.transform.scale(inner_style.img, (self.rect[2], self.rect[3])), (self.rect[0],self.rect[1]))
         else:
-            screen.blit(pygame.transform.scale(outer_style.img, (self.rect[2], self.rect[3])), (self.rect[0],self.rect[1]))
-        
-        if inner_style.img is None:
-            if inner_style.bg_color is not None:
-                pygame.draw.rect(screen,inner_style.bg_color,self.slider_rect)
-            if inner_style.border_size>0:
-                pygame.draw.rect(screen,inner_style.border_color,self.slider_rect, inner_style.border_size)
-        else:
-            screen.blit(pygame.transform.scale(inner_style.img, (self.rect[2], self.rect[3])), (self.rect[0],self.rect[1]))
+            if outer_style.img is None:
+                self.draw_rect(screen, outer_style,[self.rect[0]+5,self.rect[1],self.rect[2]-10,self.rect[3]])
+            else:
+                screen.blit(pygame.transform.scale(outer_style.img, (self.rect[2], self.rect[3])), (self.rect[0],self.rect[1]))
+            
+            if inner_style.img is None:
+                if inner_style.bg_color is not None:
+                    pygame.draw.rect(screen,inner_style.bg_color,self.slider_rect, border_radius = inner_style.border_radius)
+                if inner_style.border_size>0:
+                    pygame.draw.rect(screen,inner_style.border_color,self.slider_rect, inner_style.border_size, border_radius = inner_style.border_radius)
+            else:
+                screen.blit(pygame.transform.scale(inner_style.img, (self.rect[2], self.rect[3])), (self.rect[0],self.rect[1]))
 
     def handle_events(self, events):
         """Handles the events
@@ -773,33 +806,142 @@ class Slider(Widget):
         """
         for event in events:
             if event.type == pygame.MOUSEMOTION:
-                self.hovered = is_point_inside_rect(event.pos,self.slider_rect2)
+                self.selector_hovered = is_point_inside_rect(event.pos,self.slider_rect2)
+                self.hovered = is_point_inside_rect(event.pos,self.rect2)
                 if self.pressed:
                     self.value = min(max(0,(event.pos[0]-self.rect[0])/self.rect[2]),1)
+                    if self.valueChanged_callback is not None:
+                        self.valueChanged_callback(self.value)    
+
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                self.hovered = is_point_inside_rect(event.pos,self.slider_rect2)
-                if self.hovered == True:
-                    if self.is_toggle:
-                        if not self.toggled:
-                            self.pressed=not self.pressed
-                            self.toggled=True
-                    else:
-                        self.pressed=True
-                    if self.pressed:
-                        if self.mouse_down_callback is not None:
-                            self.mouse_down_callback()
+                self.selector_hovered = is_point_inside_rect(event.pos,self.slider_rect2)
+                self.hovered = is_point_inside_rect(event.pos,self.rect2)
+                if self.hovered == True and self.selector_hovered == False:
+                    self.value = min(max(0,(event.pos[0]-self.rect[0])/self.rect[2]),1)
+                    if self.valueChanged_callback is not None:
+                        self.valueChanged_callback(self.value)    
+                elif self.selector_hovered:
+                    self.pressed = True
 
 
-
-                
 
             elif event.type == pygame.MOUSEBUTTONUP:
-                if not self.is_toggle:
-                    self.pressed=False
-                self.toggled=False
-                if self.valueChanged_callback is not None:
-                    self.valueChanged_callback(self.value)    
+                self.selector_hovered = is_point_inside_rect(event.pos,self.slider_rect2)
+                self.hovered = is_point_inside_rect(event.pos,self.rect2)
+                if self.selector_hovered:
+                    if self.pressed:
+                        self.value = min(max(0,(event.pos[0]-self.rect[0])/self.rect[2]),1)
+                        if self.valueChanged_callback is not None:
+                            self.valueChanged_callback(self.value)    
+                self.pressed = False
 
+
+# =============================================== List ==========================================
+class List(Widget):
+    def __init__(
+                self,
+                parent:WindowManager=None,
+                list=[],
+                style: str = "",
+                selection_changed_callback=None
+    ):
+        Widget.__init__(self,parent,style=style, extra_styles={
+            "list":WidgetStyle(),
+            "list.item.normal":WidgetStyle(height=20,bg_color=get_color("#a7a7a7")),
+            "list.item.hover":WidgetStyle(height=20,bg_color=get_color("#c6c6c6")),
+            "list.item.pressed":WidgetStyle(height=20,bg_color=get_color("#565656"))
+            })
+        self.list = list
+        self.parent = parent
+        self.pressed = False
+        self.hovered = False
+        self.hovered_item_index = 0
+        self.current_item = 0
+        self.scroll_value = 0
+        self.setStyleSheet(style)
+        self.first_visible = 0
+        self.selection_changed_callback = selection_changed_callback
+        self.last_mouse_y_pos = 0
+        self.scrolling = False
+
+    def paint(self, screen):
+        """Paints the button
+
+        Args:
+            screen ([type]): The screen on which to blit
+        """
+          
+        outer_style = self.styles["list"]
+
+        item_style_hovered = self.styles["list.item.hover"]
+        item_style_normal = self.styles["list.item.normal"]
+        item_style_selected = self.styles["list.item.normal"]
+
+        if outer_style.img is None:
+            self.draw_rect(screen, outer_style,[self.rect[0],self.rect[1]+5,self.rect[2],self.rect[3]-10])
+        else:
+            screen.blit(pygame.transform.scale(outer_style.img, (self.rect[2], self.rect[3])), (self.rect[0],self.rect[1]))
+        
+        y_pos = self.rect[1]
+        x_pos = self.rect[0]
+        for i in range(self.first_visible,len(self.list)):
+            entry= self.list[i]
+            item_rect=[x_pos, y_pos, self.rect[2], item_style_hovered.height]
+            if i==self.hovered_item_index:
+                self.draw_rect(screen, item_style_hovered,item_rect)
+                self.blit_text(entry, item_style_hovered, screen, item_rect)
+                y_pos += item_style_hovered.height
+            elif i==self.current_item:
+                self.draw_rect(screen, item_style_selected,item_rect)
+                self.blit_text(entry, item_style_selected, screen, item_rect)
+                y_pos += item_style_selected.height
+            else:
+                self.blit_text(entry, item_style_normal, screen, item_rect)
+                y_pos += item_style_normal.height
+            if y_pos>self.rect2[3]:
+                break
+
+
+    def handle_events(self, events):
+        """Handles the events
+
+        """
+        for event in events:
+            if event.type == pygame.MOUSEMOTION:
+                self.hovered = is_point_inside_rect(event.pos,self.rect2)
+                if self.hovered:
+                    self.hovered_item_index = min((event.pos[1]-self.rect[1])//self.styles["list.item.normal"].height+self.first_visible,len(self.list)-1)
+                else:
+                    self.hovered_item_index = -1
+                if self.pressed:
+                    dy = event.pos[1]-self.last_mouse_y_pos
+                    if abs(dy)>5:
+                        self.last_mouse_y_pos = event.pos[1]
+                        self.scrolling = True
+                        if dy>5:
+                            if self.first_visible>0:
+                                self.first_visible-=1
+                        else:
+                            if self.first_visible<len(self.list)-1:
+                                self.first_visible+=1
+
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                self.hovered = is_point_inside_rect(event.pos,self.rect2)
+                self.pressed= True
+                self.last_mouse_y_pos = event.pos[1]
+
+
+
+            elif event.type == pygame.MOUSEBUTTONUP:
+                self.pressed= False
+                if self.hovered:
+                    if not self.scrolling:
+                        self.current_item = self.hovered_item_index
+                    if not self.pressed:
+                        self.value = min(max(0,(event.pos[0]-self.rect[0])/self.rect[2]),1)
+                    if self.selection_changed_callback is not None:
+                        self.selection_changed_callback(self.value)    
+                    self.scrolling = False
 
 # =============================================== Menus ==========================================
 # ---------------------------------------------------- Menu Bar -----------------------------------------------------
@@ -858,7 +1000,8 @@ class MenuBar(Widget):
 
     def handle_events(self, events):
         for menu in self.menus:
-            menu.handle_events(events)
+            if menu.visible:
+                menu.handle_events(events)
         return super().handle_events(events)                
 
 # ---------------------------------------------------- Menu -----------------------------------------------------
@@ -869,9 +1012,13 @@ class Menu(Button):
                 self,
                 parent:MenuBar,
                 caption="",
-                style:str="btn.normal{color:white; background-color:#878787;}\nbtn.hover{color:white; background-color:#a9a9a9};\nbtn.pressed{color:red; background-color:#565656};",
+                style:str="",
     ):
-        Button.__init__(self, caption,style=style)
+        Button.__init__(self, caption,style=style,extra_styles={
+            "btn.normal":WidgetStyle(border_radius=0,text_color=(255,255,255), bg_color=get_color("#878787")),
+            "btn.hover":WidgetStyle(border_radius=0,text_color=(255,255,255), bg_color=get_color("#a9a9a9")),
+            "btn.pressed":WidgetStyle(border_radius=0,text_color=(255,255,255), bg_color=get_color("#565656")),
+        })
         self.parent = parent
         self.actions=[]
         parent.addMenu(self)
@@ -918,7 +1065,8 @@ class Menu(Button):
 
     def handle_events(self, events):
         for action in self.actions:
-            action.handle_events(events)
+            if action.visible:
+                action.handle_events(events)
         return super().handle_events(events)     
 
 
@@ -930,9 +1078,13 @@ class Action(Button):
                 self,
                 parent:Menu,
                 caption="",
-                style:str="btn.normal{color:white; background-color:#878787;}\nbtn.hover{color:white; background-color:#a9a9a9};\nbtn.pressed{color:red; background-color:#565656};",
+                style:str="",
     ):
-        Button.__init__(self, caption,style=style)
+        Button.__init__(self, caption,style=style,extra_styles={
+            "btn.normal":WidgetStyle(border_radius=0,text_color=(255,255,255), bg_color=get_color("#878787")),
+            "btn.hover":WidgetStyle(border_radius=0,text_color=(255,255,255), bg_color=get_color("#a9a9a9")),
+            "btn.pressed":WidgetStyle(border_radius=0,text_color=(255,255,255), bg_color=get_color("#565656")),            
+        })
         self.parent = parent
         self.actions=[]
         parent.addAction(self)
@@ -961,26 +1113,28 @@ class MenuSeparator(Label):
                 self,
                 parent:Menu,
                 caption="",
-                style:str="label{color:white; background-color:#878787;}\n",
+                style:str="",
     ):
-        Button.__init__(self, caption,style=style)
+        Label.__init__(self, caption,style=style)
         self.parent = parent
         self.actions=[]
         parent.addAction(self)
 
+
     def prepare(self, rect_xstart=0, rect_ystart=0):
-        style = self.styles["label"]
+        style = self.styles["widget"]
         if style.height is not None:
             h = style.height
         else:
-            h = 2
+            h = 1
         if style.width is not None:
             w = style.width
         else:
             w = 100
 
         self.setRect([rect_xstart,rect_ystart,w, h])        
-        return rect_ystart + w
+        return rect_xstart, rect_ystart + h
+
 
     def paint(self, screen):
         style = self.styles["widget"]
