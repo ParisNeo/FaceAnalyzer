@@ -107,6 +107,7 @@ def template_statusbar(rect):
     # build button
     return Widget(
         rect,
+        wm,
     style="""
         widget{
             align:left;
@@ -125,6 +126,7 @@ def template_label(title,rect):
     # build button
     return Label(
         title,
+        wm,
         rect,
     style="""
         label{
@@ -147,6 +149,7 @@ def template_button(title, rect, is_togle=False, clicked_event_handler=None):
     # build button
     return Button(
         title,
+        wm,
         rect,
     style="""
         btn.normal{
@@ -180,6 +183,7 @@ def template_progressbar(rect):
     
     # build button
     return ProgressBar(
+        wm,
         rect,
     style="""
         brogressbar.outer{
@@ -222,12 +226,13 @@ bg              = template_label("",(0,560,800,40))
 pb_advance      = template_progressbar((500,575,290,10))
 img_feed        = ImageBox(rect=[80,0,640,480])
 
+wm.addWidget(img_feed)
+
 wm.addWidget(lbl_info)
 wm.addWidget(bg)
 wm.addWidget(pb_advance)
 wm.addWidget(btn_calibrate)
 wm.addWidget(btn_activate)
-wm.addWidget(img_feed)
 
 #  Main loop
 while Running:
