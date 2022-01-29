@@ -430,7 +430,7 @@ class WindowManager():
             for event in self.events:
                 if event.type == pygame.QUIT:
                     print("Done")
-                    Running=False
+                    self.Running=False
             # Update UI
             pygame.display.update()
 
@@ -927,8 +927,9 @@ class List(Widget):
 
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 self.hovered = is_point_inside_rect(event.pos,self.rect2)
-                self.pressed= True
-                self.last_mouse_y_pos = event.pos[1]
+                if self.hovered:
+                    self.pressed= True
+                    self.last_mouse_y_pos = event.pos[1]
 
 
 
