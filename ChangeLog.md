@@ -1,4 +1,7 @@
 
+# V 0.1.18
+- All pygame examples have been transformed into OOpyGame based examples
+- Removed all pygame helpers
 # V 1.13.2
  - Bug fix, helpers ui can now be imported
 # V 1.11.2

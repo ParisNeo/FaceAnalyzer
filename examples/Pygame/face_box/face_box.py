@@ -13,7 +13,7 @@ from FaceAnalyzer import FaceAnalyzer, Face,  DrawingSpec, buildCameraMatrix
 from FaceAnalyzer.helpers.geometry.orientation import faceOrientation2Euler
 from FaceAnalyzer.helpers.geometry.euclidian import get_z_line_equation, get_plane_infos, get_plane_line_intersection, region_3d_2_region_2d, is_point_inside_region
 from FaceAnalyzer.helpers.ui.pillow import pilDrawCross, pilShowErrorEllipse, pilOverlayImageWirthAlpha
-from FaceAnalyzer.helpers.ui.pygame import Action, Label, WindowManager, MenuBar, Menu, Timer, ImageBox
+from OOPyGame import Action, Label, WindowManager, MenuBar, Menu, Timer, ImageBox
 
 from FaceAnalyzer.helpers.estimation import KalmanFilter
 import numpy as np

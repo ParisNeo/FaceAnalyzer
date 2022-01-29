@@ -17,7 +17,7 @@ import time
 import ctypes
 from pathlib import Path
 
-from FaceAnalyzer.helpers.ui.pygame import Widget, Button, Label, ProgressBar, ImageBox, WindowManager
+from OOPyGame import Widget, Button, Label, ProgressBar, ImageBox, WindowManager
 from pygame.mixer import Sound, get_init, pre_init
 import array
 import pickle

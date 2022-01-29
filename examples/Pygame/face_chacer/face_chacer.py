@@ -8,17 +8,15 @@
 <================"""
 
 import pygame
-import win32api, win32con
 from FaceAnalyzer import FaceAnalyzer
 from FaceAnalyzer.helpers.geometry.euclidian import is_point_inside_rect, get_z_line_equation, get_plane_infos, get_plane_line_intersection
 from FaceAnalyzer.helpers.estimation import KalmanFilter
 import numpy as np
 import cv2
 import time
-import ctypes
 from pathlib import Path
 
-from FaceAnalyzer.helpers.ui.pygame import Widget, Button, Label, ProgressBar, ImageBox, WindowManager, Sprite, MenuBar, Menu, Action
+from OOPyGame import Widget, Button, Label, ProgressBar, ImageBox, WindowManager, Sprite, MenuBar, Menu, Action
 from pygame.mixer import Sound, get_init, pre_init
 import array
 import pickle

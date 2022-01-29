@@ -6,19 +6,17 @@
 <================"""
 
 import pygame
-import win32api, win32con
 from FaceAnalyzer import FaceAnalyzer
 from FaceAnalyzer.helpers.geometry.euclidian import is_point_inside_rect, get_z_line_equation, get_plane_infos, get_plane_line_intersection
 from FaceAnalyzer.helpers.estimation import KalmanFilter
 import numpy as np
 import cv2
 import time
-import ctypes
 from pathlib import Path
 
-from FaceAnalyzer.helpers.ui.pygame import Widget, Button, Label, ProgressBar, ImageBox, WindowManager, Sprite
+from OOPyGame import Widget, Button, Label, ProgressBar, ImageBox, WindowManager, Sprite
 from pygame.mixer import Sound, get_init, pre_init
-import array
+
 import pickle
 
 global click, is_calibrating, calibration_step, calibration_buffer, is_active
@@ -109,6 +107,7 @@ def template_label(title,rect):
     # build button
     return Label(
         title,
+        None,
         rect,
     style="""
         label{
@@ -131,6 +130,7 @@ def template_button(title, rect, is_togle=False, clicked_event_handler=None):
     # build button
     return Button(
         title,
+        None,
         rect,
     style="""
         btn.normal{
@@ -164,6 +164,7 @@ def template_progressbar(rect):
     
     # build button
     return ProgressBar(
+        None,
         rect,
     style="""
         brogressbar.outer{

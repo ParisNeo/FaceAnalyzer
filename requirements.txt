@@ -6,3 +6,4 @@ Pillow
 cssutils
 sqtui
 pygame
+OOPyGame 
