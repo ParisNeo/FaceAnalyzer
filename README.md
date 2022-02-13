@@ -7,8 +7,8 @@ It can be used to :
 0. Detect faces using the mediapipe library
 1. Extract faces from an image (either a box around the face or a face contour cut without background)
 2. Measure the face position and orientation
-3. Measure eyes openings and orientation in 3D space
-4. Detect blinks
+3. Measure eyes openings, number of blinks, blink duration and perclos
+4. Measure eye orientation in 3D space
 5. Get the 2D gaze position on a predefined 3D plan(s) allowing to understand what the user is looking at
 6. Compute face triangulation (builds triangular surfaces that can be used to build 3D models of the face)
 7. Copy a face from an image to another.
