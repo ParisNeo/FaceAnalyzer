@@ -32,6 +32,7 @@ while cap.isOpened():
     #Now if we find a face
     if fa.nb_faces==1:
         left_eye_opening, right_eye_opening, is_blink = fa.faces[0].process_eyes(image, detect_blinks=True, blink_th=0.35) #, normalize=True
+        perclos = fa.faces[0].compute_perclos(left_eye_opening, right_eye_opening)*100
         fa.faces[0].draw_eyes_landmarks(image)
         # Get eyes positions
         left_eye_pos  = fa.faces[0].get_landmark_pos(fa.faces[0].left_eye_center_index)
@@ -47,6 +48,13 @@ while cap.isOpened():
             n_blinks += 1
         else:
             cv2.putText(image, f"Blinking : {n_blinks}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255),2)
+
+        if perclos<20:
+            cv2.putText(image, f"Perclos : {perclos:2.2f}%", (10, 65), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0),2)
+        else:
+            cv2.putText(image, f"Perclos : {perclos:2.2f}%", (10, 65), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0),4)
+            cv2.putText(image, f"Attention, you are sleepy !", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0),4)
+            
     # Show the output 
     try:
         cv2.imshow('Eye processing', cv2.cvtColor(image, cv2.COLOR_BGR2RGB))

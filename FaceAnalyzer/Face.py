@@ -364,6 +364,7 @@ class Face():
 
 
         self.blinking = False
+        self.perclos_buffer = []
 
 
         self.face_contours = list(set(
@@ -894,6 +895,7 @@ class Face():
             right_eye_opening=0
 
         right_eyelids_contour = self.get_landmarks_pos(self.right_eyelids_indices)
+        
         right_eye_upper0 = right_eyelids_contour[12, ...]
         right_eye_upper1 = right_eyelids_contour[13, ...]
         right_eye_lower = right_eyelids_contour[4, ...]
@@ -937,6 +939,32 @@ class Face():
             return left_eye_opening, right_eye_opening
 
 
+    def compute_perclos(self,left_eye_opening:float, right_eye_opening:float, perclos_buffer_depth:int=1800, buffer:list = None, threshold=0.2):
+        """Computes the perclos on a time window
+        The perclos is the percentage of ey closure over a period of time. Generally 1 minute.
+        Here the perclos_buffer_depth should be computed taking into consideration the frame rate you are using
+        the default value supposes 30 FPS and a window of 1 minute.
+
+        Args:
+            left_eye_opening (float): The left eye opening( can bee computed using process_eyes method)
+            right_eye_opening (float): The left eye opening( can bee computed using process_eyes method)
+            perclos_buffer_depth (int, optional): The depth of the perclos computation buffer. Defaults to 1800. This is the buffer size for 1 minute at 30fps
+            buffer (list, optional): A custom buffer to be used instead of the default buffer (useful when using multiple window sizes). Defaults to None.
+            threshold (float, optional) : The closing threshold (generally in litterature it is 20% so the default one is 0.2)
+        Returns:
+            float: The perclos (bertween 0 and 1) Multiply it by 100 to get the percentage
+        """
+        # Buffer
+        mean_eye_closure = (left_eye_opening + right_eye_opening)/2
+        if buffer is None:
+            buffer = self.perclos_buffer
+        buffer.append(mean_eye_closure)
+        while len(buffer)>perclos_buffer_depth:
+            buffer.pop(0)
+        # Compute Perclos
+        pb = np.array(buffer)
+        perclos = ((pb<threshold).astype(np.int).sum())/len(buffer)
+        return perclos
 
     def draw_eyes_landmarks(self, image:np.ndarray):
         """Draws eyes landmarks on  the image
