@@ -365,6 +365,8 @@ class Face():
 
         self.blinking = False
         self.perclos_buffer = []
+        self.blink_start_time = 0
+        self.last_blink_duration = 0
 
 
         self.face_contours = list(set(
@@ -871,7 +873,7 @@ class Face():
 
         Returns:
             tuple: Depending on what configuration was chosen in the parameters, the output is:
-            left_eye_opening, right_eye_opening, is_blink if blinking detection is activated
+            left_eye_opening, right_eye_opening, is_blink, last_blink_duration if blinking detection is activated
             left_eye_opening, right_eye_opening if blinking detection is deactivated
         """
 
@@ -931,10 +933,12 @@ class Face():
             if eye_opening < blink_th and not self.blinking:
                 self.blinking = True
                 is_blink = True
-            elif eye_opening > blink_th*blinking_double_threshold_factor:
+                self.blink_start_time=time.time()
+            elif eye_opening > blink_th*blinking_double_threshold_factor and self.blinking:
                 self.blinking = False
+                self.last_blink_duration=time.time()-self.blink_start_time
 
-            return left_eye_opening, right_eye_opening, is_blink
+            return left_eye_opening, right_eye_opening, is_blink, self.last_blink_duration
         else:
             return left_eye_opening, right_eye_opening
 
