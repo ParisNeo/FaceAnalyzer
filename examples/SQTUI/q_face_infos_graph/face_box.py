@@ -9,7 +9,7 @@ from PySide2 import QtCore
 from scipy.ndimage.measurements import label
 from FaceAnalyzer import FaceAnalyzer, Face,  DrawingSpec, buildCameraMatrix
 from FaceAnalyzer.helpers.geometry.orientation import faceOrientation2Euler
-from FaceAnalyzer.Helpers import get_z_line_equation, get_plane_infos, get_plane_line_intersection
+from FaceAnalyzer.helpers.geometry.euclidian import  get_z_line_equation, get_plane_infos, get_plane_line_intersection
 import numpy as np
 import cv2
 import time

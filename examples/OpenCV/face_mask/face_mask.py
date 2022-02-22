@@ -44,6 +44,7 @@ with open(str(file),"rb") as f:
 
 # open an image and recover all faces inside it (here there is a single face)
 fa_mask = FaceAnalyzer.from_image(str(Path(__file__).parent/"assets/pennywize.jpg"))
+
 mask_face = fa_mask.faces[0]
 mask_face.triangles=triangles
 

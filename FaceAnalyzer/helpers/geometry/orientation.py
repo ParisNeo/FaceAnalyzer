@@ -27,7 +27,7 @@ def faceOrientation2Euler(r: np.ndarray, degrees:bool=True) -> np.ndarray:
         return yaw+np.pi if yaw<0 else yaw-np.pi, pitch, roll+np.pi if roll<0 else roll-np.pi
 
 def rotateLandmarks(landmarks:np.ndarray, r:np.ndarray, invert:bool=False):
-    mrp = R.from_rotvec(r[:,0])
+    mrp = R.from_rotvec(-r[:,0])
     if invert:
         mrp=mrp.inv()
     return mrp.apply(landmarks)

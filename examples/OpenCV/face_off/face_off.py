@@ -47,12 +47,12 @@ while cap.isOpened():
         # Make a copy of the original image (because we will be switching twice)
         img = image.copy()
         # Set the triangles
-        fa.faces[0].triangles=triangles
-        fa.faces[1].triangles=triangles
+        #fa.faces[0].triangles=triangles
+        #fa.faces[1].triangles=triangles
         # Put face0 in face 1
-        image = fa.faces[0].copyToFace(fa.faces[1], img, image, opacity = 0.8, landmark_indices=lm_indices)
+        image = fa.faces[0].copyToFace(fa.faces[1], img, image, opacity = 0.8, landmark_indices=lm_indices, seemless_cloning=True, retriangulate=True)
         # Put face 1 in face 0
-        image = fa.faces[1].copyToFace(fa.faces[0], img, image, opacity = 0.8, landmark_indices=lm_indices)
+        image = fa.faces[1].copyToFace(fa.faces[0], img, image, opacity = 0.8, landmark_indices=lm_indices, seemless_cloning=True, retriangulate=False)
     # Show the output 
     try:
         cv2.imshow('Face Off', cv2.cvtColor(image, cv2.COLOR_BGR2RGB))

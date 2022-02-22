@@ -7,6 +7,7 @@
 from os import link
 from FaceAnalyzer import FaceAnalyzer, Face,  DrawingSpec, buildCameraMatrix
 from FaceAnalyzer.helpers.geometry.orientation import faceOrientation2Euler
+from FaceAnalyzer.helpers.ui.opencv import cvOverlayImage
 import numpy as np
 import cv2
 import time
@@ -15,13 +16,18 @@ import pickle
 
 # open camera
 cap = cv2.VideoCapture(0)
+width = 1920    #width = 1920
+height = 1080   #height = 1080
+image_size = [width, height]
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
 
 # Build a window
 cv2.namedWindow('Face Mesh', flags=cv2.WINDOW_NORMAL)
-cv2.resizeWindow('Face Mesh', (640,480))
+cv2.resizeWindow('Face Mesh', (width,height))
 
 # Build face analyzer while specifying that we want to extract just a single face
-fa = FaceAnalyzer(max_nb_faces=3)
+fa = FaceAnalyzer(max_nb_faces=3,image_shape=(width,height))
 
 # FPS processing
 prev_frame_time = time.time()
@@ -59,11 +65,10 @@ while cap.isOpened():
         for i in range(fa.nb_faces):
             face = fa.faces[i]
             # Get head position and orientation compared to the reference pose (here the first frame will define the orientation 0,0,0)
-            pos, ori = face.get_head_posture(camera_matrix=mtx, dist_coeffs=dist)
+            pos, ori = face.get_head_posture()#camera_matrix=mtx, dist_coeffs=dist)
             if pos is not None:
                 yaw, pitch, roll = faceOrientation2Euler(ori, degrees=True)
                 face.draw_bounding_box(image, color=box_colors[i%3], thickness=5)
-                face.draw_reference_frame(image, pos, ori, origin=face.get_landmark_pos(Face.nose_tip_index))
 
                 # Show 
                 #ori = Face.rotationMatrixToEulerAngles(ori)
@@ -77,19 +82,36 @@ while cap.isOpened():
                     cv2.putText(
                         image, f"Position : {pos[0,0]:2.2f},{pos[1,0]:2.2f},{pos[2,0]:2.2f}", (10, 120), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (255, 255, 255))
             
-                left_pos, right_pos = face.get_eyes_position(camera_matrix=mtx, dist_coeffs=dist)
-                left_eye_opening, right_eye_opening, is_blink = face.process_eyes(image, detect_blinks=True, blink_th=0.6)
-                print(f"left_eye_opening :{left_eye_opening}, right_eye_opening:{right_eye_opening}")
+                left_pos, right_pos = face.get_eyes_position()#camera_matrix=mtx, dist_coeffs=dist)
+                left_eye_opening, right_eye_opening, is_blink, last_blink_duration = face.process_eyes(image, detect_blinks=True, blink_th=0.6)
+                #print(f"left_eye_opening :{left_eye_opening}, right_eye_opening:{right_eye_opening}")
 
                 #print(f'left : {left_pos}, right : {right_pos}')
                 face.draw_landmarks(image,face.get_landmarks_pos(face.left_eyelids_indices),1)
                 face.draw_landmarks(image,face.get_landmarks_pos(face.left_eye_contour_indices),1,(0,0,0),1, link=True)
 
                 face.draw_landmarks(image,face.get_landmarks_pos(face.right_eyelids_indices),1)
-                face.draw_landmarks(image,face.get_landmarks_pos(face.right_eye_contour_indices),1,(0,0,0),1, link=True)
+                face.draw_landmarks(image,face.get_landmarks_pos(face.right_eye_contour_indices),1,(0,0,0),1, link=True)  
 
-                left_eye_ori = face.compose_eye_rot(left_pos, ori,np.array([-0.04,-0.07]),90,60)
-                right_eye_ori = face.compose_eye_rot(right_pos, ori,np.array([-0.02,-0.15]),90,60)
+                #face.draw_landmarks(image, face.get_3d_realigned_landmarks_pos()+np.array([300,0,0]))              
+                #face.draw_landmarks(image, face.npLandmarks,color=(255,255,0))          
+
+
+
+                left_eye = face.getLeftEye(image,True)
+                right_eye = face.getRightEye(image,True)
+                try:
+                    image = cvOverlayImage(image,left_eye,500,i*100,100,int(left_eye.shape[0]*100/left_eye.shape[1]))
+                    image = cvOverlayImage(image,right_eye,250,i*100,100,int(right_eye.shape[0]*100/right_eye.shape[1]))
+                except:
+                    pass
+
+                face.draw_landmarks(image, face.get_landmarks_pos(Face.left_eye_orientation_landmarks),3,color=(255,255,0))
+                face.draw_landmarks(image, face.get_landmarks_pos(Face.right_eye_orientation_landmarks),3,color=(255,255,0))                
+
+                #offset and xang/yang are to be calibrated
+                left_eye_ori = face.compose_eye_rot(left_pos, ori, offset=(-0.1,0.0),x2ang=180,y2ang=40)
+                right_eye_ori = face.compose_eye_rot(right_pos, ori, offset=(-0.1,0.0),x2ang=180,y2ang=40)
 
                 left_eye = face.get_landmark_pos(Face.left_eye_center_index)
                 right_eye = face.get_landmark_pos(Face.right_eye_center_index)
@@ -97,6 +119,7 @@ while cap.isOpened():
 
                 face.draw_reference_frame(image, pos, left_eye_ori, origin=left_eye)
                 face.draw_reference_frame(image, pos, right_eye_ori, origin=right_eye)
+                face.draw_reference_frame(image, pos, ori, origin=face.get_landmark_pos(Face.nose_tip_index))
             
     # Process fps
     curr_frame_time = time.time()

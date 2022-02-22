@@ -1,4 +1,8 @@
 
+# V 0.1.20
+-  Bugfixes
+- face orientation correction enhanced
+- Eye tracking enhanced
 # V 0.1.18
 - All pygame examples have been transformed into OOpyGame based examples
 - Removed all pygame helpers

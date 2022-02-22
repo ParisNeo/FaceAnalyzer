@@ -86,9 +86,9 @@ while cap.isOpened():
         # Only after 1 minute that we can use this perclos
         if long_perclos_ready:
             if long_perclos<20:
-                cv2.putText(image, f"Perclos (1Minute) : {long_perclos:2.2f}%", (10, 170), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0),2)
+                cv2.putText(image, f"Perclos (1Minute) : {long_perclos:2.2f}%", (10, 140), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0),2)
             else:
-                cv2.putText(image, f"Perclos (1Minute) : {long_perclos:2.2f}%", (10, 170), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0),4)
+                cv2.putText(image, f"Perclos (1Minute) : {long_perclos:2.2f}%", (10, 140), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0),4)
 
 
     # Show the output 

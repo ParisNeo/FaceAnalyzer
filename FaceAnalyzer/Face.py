@@ -75,6 +75,8 @@ class Face():
                                 ]                                
     left_eye_center_index = 473
 
+    left_eye_orientation_landmarks=[442,450,362,263, 473]
+
     simplified_right_eyelids_indices = [
                                 130, # right
                                 145, # bottom
@@ -113,7 +115,9 @@ class Face():
                                     133, # Left
                                 ]                                   
     right_eye_center_index = 468    
-
+    
+    right_eye_orientation_landmarks=[223,230, 130, 133, 468]
+    
     # Mouth
     simplified_mouth_outer_indices = [
                             61,  # right 
@@ -358,6 +362,7 @@ class Face():
         self.image_shape = image_shape
 
         if type(landmarks)==np.ndarray:
+            self.landmarks= landmarks
             self.npLandmarks=landmarks
         else:
             self.update(landmarks)
@@ -385,13 +390,14 @@ class Face():
         self.mp_drawing = mp.solutions.drawing_utils
 
         #Using the canonical face coordinates
-        self.face_3d_reference_positions=np.array([
-        [0,-0.004632,0.075866],            # Nose tip        
-        [ 0.04671,0.026645,0.030841],      # Left eye extremety
-        [-0.04671,0.026645,0.030841],      # Right eye extremety
-        [0,0.04886,0.053853],              # forehead center
+        noze_tip_pos = [0,0.004632,0.075866]
+        self.face_3d_reference_positions=(np.array([
+        [0,0.004632,0.075866],            # Nose tip        
+        [ 0.04671,-0.026645,0.030841],      # Left eye extremety
+        [-0.04671,-0.026645,0.030841],      # Right eye extremety
+        [0,-0.04886,0.053853],              # forehead center
         #[0,-0.079422,0.051812]             # Chin 
-        ])*1000 # go to centimeters
+        ])-np.array(noze_tip_pos))*1000 # go to centimeters
         self.face_reference_landmark_ids = [
             4,          # Nose tip
             359,        # Left eye extremety
@@ -556,10 +562,9 @@ class Face():
         vertices = self.npLandmarks.copy()
         pos, ori = self.get_head_posture(camera_matrix, dist_coeffs)
         if pos is not None :
-            center = vertices.mean(axis=0)
+            center = self.npLandmarks[self.nose_tip_index,...]#vertices.mean(axis=0)
             centered = (vertices-center)
             vertices = rotateLandmarks(centered, ori, True)
-            vertices[:,1]*=-1
             vertices += center
         if indices is not None:
             return vertices[indices,:]
@@ -760,7 +765,7 @@ class Face():
         assert self.ready, "Face object is not ready. There are no landmarks extracted."
 
         if camera_matrix is None:
-            camera_matrix= buildCameraMatrix()
+            camera_matrix= buildCameraMatrix(size=self.image_shape)
 
         # Use opencv's PnPsolver to solve the rotation problem
 
@@ -781,6 +786,37 @@ class Face():
 
         return face_pos, face_ori
 
+    def get_eye_pos(self, iris, left, right, up, down, eye_radius = 10):
+        """Computes eye angle compared to a reference
+        Each eye is represented as a ball
+
+                 |
+        ---------|---------
+
+        Args:
+            iris (_type_): The 3D position of the iris
+            left (_type_): The left  of the eyelids
+            right (_type_): The right of the eyelids
+            up (_type_): The upper position of the eyelids
+            down (_type_): The lower position of the eyelids
+            eye_radius (float, optional): The radius of the eye. Defaults to 0.1.
+
+        Returns:
+            list: The eye angles yaw and pitch
+        """
+        ex = (left-right)
+        ey = (up-down)
+        nx = np.linalg.norm(ex)
+        ny = np.linalg.norm(ey)
+        ex/= nx
+        ey/= ny
+
+        h_center = (right+left)/2
+        v_center = (up+down)/2
+        h_pos_iris = 2*(iris-h_center)/nx
+        v_pos_iris = 2*(iris-v_center)/nx
+        return np.array([np.dot(h_pos_iris,ex),np.dot(v_pos_iris,ey)])
+
     def get_eyes_position(self, camera_matrix:np.ndarray = None, dist_coeffs:np.ndarray=np.zeros((4,1)))->tuple:
         """Gets the posture of the eyes (position in cartesian space and Euler angles)
         Args:
@@ -793,44 +829,39 @@ class Face():
         # Assertion to verify that the face object is ready
         assert self.ready, "Face object is not ready. There are no landmarks extracted."
 
-        # Correct orientation
-        lm = self.get_3d_realigned_landmarks_pos(camera_matrix=camera_matrix, dist_coeffs=dist_coeffs)
-
         # Left eye
-        iris = np.array(lm[Face.left_eye_center_index,...])
-        
-        left = np.array(lm[263])
-        right = np.array(lm[362])
 
-        center = (left+right)/2
-        ex = left-right
-        ex[2]=0
-        nx = np.linalg.norm(ex)
-        ex /=nx
-
-        ey = np.cross(ex,np.array([0,0,1]))
+        left_eye_infos = self.get_3d_realigned_landmarks_pos(Face.left_eye_orientation_landmarks, camera_matrix=camera_matrix, dist_coeffs=dist_coeffs)
+        # Get landmarks
 
 
-        left_pos = np.array([np.dot((iris-center),ex)/nx,np.dot((iris-center),ey)/nx])
 
-        # right
-        iris = np.array(lm[Face.right_eye_center_index])
-        left = np.array(lm[133])
-        right = np.array(lm[130])
+        up         = left_eye_infos[0, ...]
+        down       = left_eye_infos[1, ...]
+        right       = left_eye_infos[2, ...]
+        left        = left_eye_infos[3, ...]
+        iris        = left_eye_infos[4, ...]
 
-        center = (left+right)/2
-        ex = left-right
-        nx = np.linalg.norm(ex)
-        ex /=nx
-        nx/=2
 
-        ey = np.cross(ex,np.array([0,0,1]))
+        left_ori = self.get_eye_pos(iris, left, right, up, down)
 
-        right_pos = [np.dot((iris-center),ex)/nx,np.dot((iris-center),ey)/nx]
+        # Right reye
+        right_eye_infos = self.get_3d_realigned_landmarks_pos(Face.right_eye_orientation_landmarks, camera_matrix=camera_matrix, dist_coeffs=dist_coeffs)
+        # Get landmarks
 
-        return left_pos, right_pos
 
-    def compose_eye_rot(self, eye_pos:list, face_orientation:np.ndarray, offset=np.array([0,0]), x2ang: int=180, y2ang:int=60)->np.ndarray:
+        up     = right_eye_infos[0, ...]
+        down   = right_eye_infos[1, ...]
+        right   = right_eye_infos[2, ...]
+        left    = right_eye_infos[3, ...]
+        iris    = right_eye_infos[4, ...]
+
+
+        right_ori = self.get_eye_pos(iris, left, right, up, down)
+
+        return left_ori, right_ori
+
+    def compose_eye_rot(self, eye_pos:list, face_orientation:np.ndarray, offset=np.array([0,0]), x2ang: int=60, y2ang:int=45)->np.ndarray:
         """Composes eye position with face rotation to produce eye orientation in world coordinates
 
         Args:
@@ -844,8 +875,9 @@ class Face():
         """
         corrected_eye_pos=eye_pos+offset
         fo = R.from_rotvec(face_orientation[:,0])
-        ypr = R.from_euler('yxz',[-corrected_eye_pos[0]*x2ang,-corrected_eye_pos[1]*y2ang,0], degrees=True)
+        ypr = R.from_euler("yxz",[corrected_eye_pos[0]*x2ang,corrected_eye_pos[1]*y2ang,0], degrees=True)#,,0], degrees=True)
         return np.array((ypr*fo).as_rotvec()).reshape((3,1))
+        
 
 
     def getEyesDist(self)->int:
@@ -1230,6 +1262,77 @@ class Face():
                 pass
         return dest
 
+    def getLeftEye(self, image:np.ndarray, get_full_rect:bool=False)->np.ndarray:
+        """Gets an image of the left eye
+
+        Args:
+            image (np.ndarray): Image to extract the face from
+            
+        Returns:
+            np.ndarray: Face drawn on a black background (the size of the image is equal of that of the face in the original image)
+        """
+
+        # Assertion to verify that the face object is ready
+        assert self.ready, "Face object is not ready. There are no landmarks extracted."
+
+        landmarks = self.npLandmarks[self.left_eyelids_indices, :2]
+        p1 = landmarks.min(axis=0)
+        p2 = landmarks.max(axis=0)
+
+        landmarks -= p1
+        croped = image[int(p1[1]):int(
+            p2[1]), int(p1[0]):int(p2[0])]
+        if get_full_rect:
+            return croped
+        src_triangles = self.triangulate(self.left_eyelids_indices)
+        dest = np.zeros_like(croped)
+        for tr in src_triangles:
+            mask = np.zeros_like(dest)
+            try:
+                t_dest = np.array([landmarks[tr[0], 0:2], landmarks[tr[1], 0:2], landmarks[tr[2], 0:2]])
+                cv2.fillConvexPoly(mask, t_dest.astype(np.int), [1, 1, 1])
+                mask=mask.astype(np.bool)
+                dest = dest*~mask + mask* croped
+            except Exception as ex:
+                pass
+        return dest
+
+    def getRightEye(self, image:np.ndarray, get_full_rect:bool=False)->np.ndarray:
+        """Gets an image of the left eye
+
+        Args:
+            image (np.ndarray): Image to extract the face from
+            
+        Returns:
+            np.ndarray: Face drawn on a black background (the size of the image is equal of that of the face in the original image)
+        """
+
+        # Assertion to verify that the face object is ready
+        assert self.ready, "Face object is not ready. There are no landmarks extracted."
+
+        landmarks = self.npLandmarks[self.right_eyelids_indices, :2]
+        p1 = landmarks.min(axis=0)
+        p2 = landmarks.max(axis=0)
+
+        landmarks -= p1
+        croped = image[int(p1[1]):int(
+            p2[1]), int(p1[0]):int(p2[0])]
+        if get_full_rect:
+            return croped
+
+        src_triangles = self.triangulate(self.right_eyelids_indices)
+        dest = np.zeros_like(croped)
+        for tr in src_triangles:
+            mask = np.zeros_like(dest)
+            try:
+                t_dest = np.array([landmarks[tr[0], 0:2], landmarks[tr[1], 0:2], landmarks[tr[2], 0:2]])
+                cv2.fillConvexPoly(mask, t_dest.astype(np.int), [1, 1, 1])
+                mask=mask.astype(np.bool)
+                dest = dest*~mask + mask* croped
+            except Exception as ex:
+                pass
+        return dest
+
     def copyToFace(
                     self, 
                     dst_face, 
@@ -1294,6 +1397,7 @@ class Face():
         center = (dst_w//2,dst_h//2)
 
         if retriangulate:
+            self.triangulate(landmark_indices)
             dst_face.triangulate(landmark_indices)
 
         final_mask=np.zeros_like(dst_crop,dtype=np.uint8)
@@ -1485,7 +1589,7 @@ class Face():
                                        contours_drawing_specs
                                        )
 
-    def draw_reference_frame(self, image:np.ndarray, pos: np.ndarray, ori:np.ndarray, origin:np.ndarray=None, line_length:int=50)->None:
+    def draw_reference_frame(self, image:np.ndarray, pos: np.ndarray, ori:np.ndarray, origin:np.ndarray=None, line_length:int=50, camera_matrix=None, dist_coeffs = np.zeros((4,1)))->None:
         """Draws a reference frame at a sprecific position
 
         Args:
@@ -1496,12 +1600,14 @@ class Face():
             translation (np.ndarray, optional): A translation vector to draw the frame in a different position tha n the origin. Defaults to None.
             line_length (int, optional): The length of the frame lines (X:red,y:green,z:blue). Defaults to 50.
         """
-
+        if camera_matrix is None:
+            camera_matrix = buildCameraMatrix(size=self.image_shape)
         #Let's project three vectors ex,ey,ez to form a frame and draw it on the nose
-        (center_point2D_x, jacobian) = cv2.projectPoints(np.array([(0, 0.0, 0.0)]), ori, pos, buildCameraMatrix(), np.zeros((4,1)))
-        (end_point2D_x, jacobian) = cv2.projectPoints(np.array([(line_length, 0.0, 0.0)]), ori, pos, buildCameraMatrix(), np.zeros((4,1)))
-        (end_point2D_y, jacobian) = cv2.projectPoints(np.array([(0.0, line_length, 0.0)]), ori, pos, buildCameraMatrix(), np.zeros((4,1)))
-        (end_point2D_z, jacobian) = cv2.projectPoints(np.array([(0.0, 0.0, line_length)]), ori, pos, buildCameraMatrix(), np.zeros((4,1)))
+        (center_point2D_x, jacobian) = cv2.projectPoints(np.array([(0, 0.0, 0.0)]), ori, pos, camera_matrix, dist_coeffs)
+
+        (end_point2D_x, jacobian) = cv2.projectPoints(np.array([(line_length, 0.0, 0.0)]), ori, pos, camera_matrix, dist_coeffs)
+        (end_point2D_y, jacobian) = cv2.projectPoints(np.array([(0.0, -line_length, 0.0)]), ori, pos, camera_matrix, dist_coeffs)
+        (end_point2D_z, jacobian) = cv2.projectPoints(np.array([(0.0, 0.0, line_length)]), ori, pos, camera_matrix, dist_coeffs)
 
         p1 = ( int(center_point2D_x[0][0][0]), int(center_point2D_x[0][0][1]))         
         p2_x = ( int(end_point2D_x[0][0][0]), int(end_point2D_x[0][0][1]))         

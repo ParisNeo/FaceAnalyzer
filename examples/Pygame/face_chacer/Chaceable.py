@@ -4,7 +4,7 @@ import cv2
 from pathlib import Path
 import numpy as np
 from FaceAnalyzer.helpers.geometry.euclidian import  is_point_inside_rect
-from FaceAnalyzer.helpers.ui.opencv import cvOverlayImageWirthAlpha
+from FaceAnalyzer.helpers.ui.opencv import cvOverlayImageWithAlpha
 from OOPyGame import ImageBox
 import pygame
 
