@@ -26,6 +26,27 @@ def faceOrientation2Euler(r: np.ndarray, degrees:bool=True) -> np.ndarray:
     else:
         return yaw+np.pi if yaw<0 else yaw-np.pi, pitch, roll+np.pi if roll<0 else roll-np.pi
 
+def getDistanceBetweenAngles(angle1: float, angle2: float, is_degrees=True):
+    """Computes the distance between two angles (in degrees or radians)
+
+    Args:
+        angle1 (float): The first angle
+        angle2 (float): The secpnd angle
+        is_degrees (bool, optional): Whether the angles are in degrees or radians. Defaults to True.
+
+    Returns:
+        float: The real distance between the two angles in degrees or randians depending on is_degrees parameter
+    """
+    dist = np.abs(angle2-angle1)
+    if is_degrees:
+        if dist>180:
+            dist = 360-dist
+    else:
+        if dist>np.pi:
+            dist = 2*np.pi-dist
+    return dist
+
+
 def rotateLandmarks(landmarks:np.ndarray, r:np.ndarray, invert:bool=False):
     mrp = R.from_rotvec(-r[:,0])
     if invert:
