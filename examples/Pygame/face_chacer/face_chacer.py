@@ -246,14 +246,14 @@ class MainWindow(WindowManager):
                 face_ori = left_eye_ori
             if face_pos is not None:
                 # Detect blinking
-                left_eye_opening, right_eye_opening, is_blink = face.process_eyes(image, detect_blinks=True, blink_th=0.35)
+                left_eye_opening, right_eye_opening, is_blink, duration = face.process_eyes(image, detect_blinks=True, blink_th=0.35)
                 eye_opening=(left_eye_opening+right_eye_opening)/2
                 
                 # =========================================================================================
                 # First let's get the forward line (a virtual line that goes from the back of the head through tho nose towards the camera)
-                li  =    get_z_line_equation(face_pos, face_ori)
+                li  =           get_z_line_equation(face_pos, face_ori)
                 # Now we find the intersection point between the line and the plan. p is the 3d coordinates of the intersection pount, and p2d is the coordinates of this point in the plan
-                p, p2d   =    get_plane_line_intersection(main_plane, li)
+                p, p2d   =      get_plane_line_intersection(main_plane, li)
                 kalman.process(p2d)
                 # Filtered p2d
                 p2d = kalman.x

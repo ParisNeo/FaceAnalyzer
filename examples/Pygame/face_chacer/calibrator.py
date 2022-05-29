@@ -241,7 +241,7 @@ while Running:
                 face_ori = left_eye_ori
             if face_pos is not None:
                 # Detect blinking
-                left_eye_opening, right_eye_opening, is_blink = face.process_eyes(image, detect_blinks=True, blink_th=0.35)
+                left_eye_opening, right_eye_opening, is_blink, duration = face.process_eyes(image, detect_blinks=True, blink_th=0.35)
                 eye_opening=(left_eye_opening+right_eye_opening)/2
                 
                 # =========================================================================================

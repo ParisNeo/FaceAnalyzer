@@ -44,7 +44,7 @@ class Chaceable(ImageBox):
         Returns:
             bool: True if the point is inside the object
         """
-        self.is_contact=is_point_inside_rect(p2d, self.rect2)
+        self.is_contact=is_point_inside_rect(p2d, self.rect)
         if self.is_contact:
             self.alpha=50
         return self.is_contact
