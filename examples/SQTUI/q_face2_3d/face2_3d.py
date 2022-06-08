@@ -1,8 +1,8 @@
 """=============
-    Example : face_chacer.py
+    Example : face2_3d.py
     Author  : Saifeddine ALOUI
     Description :
-        A game of chacing objects using face orientation based on FaceAnalyzer. You use blinking to shoot them
+        A tool that uses FaceAnalyzer to represent the face position in 3D space
 <================"""
 
 from numpy.lib.type_check import imag
@@ -22,7 +22,6 @@ from sqtui import QtWidgets, QtCore
 import pyqtgraph as pg
 from PIL import Image, ImageDraw
 
-from Chaceable import Chaceable
 
 # open camera
 cap = cv2.VideoCapture(0)
@@ -92,10 +91,6 @@ class WinForm(QtWidgets.QWidget):
         self.point_pos = pg.ImageView()
         # Now let's define a plane in 3d space using 3 points (here the place is prthogonal to the camera's focal line)
         self.main_plane  =    get_plane_infos(np.array([0,0, 0]),np.array([100,0, 0]),np.array([0, 100,0]))
-        # Let's build sume stuff to chace using the pointing vector
-        self.chaceables=[]
-        self.chaceables.append(Chaceable(Path(__file__).parent/"assets/pika.png", [150,150], np.array([-90,0]), image_size))   
-        self.chaceables.append(Chaceable(Path(__file__).parent/"assets/pika.png", [150,150], np.array([90,0]), image_size))   
         self.empty_image_view = np.zeros((1000,1000,3))
 
         self.image_view = self.empty_image_view.copy()
@@ -167,13 +162,6 @@ class WinForm(QtWidgets.QWidget):
     def update_ui(self):
         self.eye_opening_pb.setValue(100*(self.left_eye_opening+self.right_eye_opening)/2)
         self.game_ui_img = Image.fromarray(np.uint8(self.empty_image_view.copy()))
-        for ch in self.chaceables:
-            is_contact = ch.check_contact(self.p2d)
-            ch.draw(self.game_ui_img)
-            if is_contact and self.is_blink:
-                ch.move_to(np.array([np.random.randint(-image_size[0]//2,image_size[0]//2-20), np.random.randint(-image_size[1]//2,image_size[1]//2-20)]))
-                self.score += 1
-                self.infos.setText(f"Shoot with blinks.\nScore: {self.score}")
 
         pilDrawCross(self.game_ui_img, (self.p2d+np.array(image_size)//2).astype(np.int), (200,0,0), 3)
         self.game_ui_img = pilShowErrorEllipse(self.game_ui_img, 10, self.p2d+np.array(image_size)//2, self.kalman.P,(255,0,0), 2)        
