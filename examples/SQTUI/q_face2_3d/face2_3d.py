@@ -9,7 +9,7 @@ from numpy.lib.type_check import imag
 from scipy.ndimage.measurements import label
 from FaceAnalyzer import FaceAnalyzer, Face,  DrawingSpec, buildCameraMatrix
 from FaceAnalyzer.helpers.geometry.orientation import faceOrientation2Euler
-from FaceAnalyzer.helpers.geometry.euclidian import get_z_line_equation, get_plane_infos, get_plane_line_intersection, region_3d_2_region_2d, is_point_inside_region
+from FaceAnalyzer.helpers.geometry.euclidian import get_quaternion_from_euler, get_z_line_equation, get_plane_infos, get_plane_line_intersection, region_3d_2_region_2d, is_point_inside_region
 from FaceAnalyzer.helpers.ui.pillow import pilDrawCross, pilShowErrorEllipse, pilOverlayImageWirthAlpha
 from FaceAnalyzer.helpers.estimation import KalmanFilter
 import numpy as np
@@ -18,9 +18,11 @@ import time
 from pathlib import Path
 import sys
 # Important!! if you don't have it, just install it using pip install sqtui pyqt5 (or pyside2) pyqtgraph
-from sqtui import QtWidgets, QtCore
+from sqtui import QtWidgets, QtCore, QtGui
 import pyqtgraph as pg
 from PIL import Image, ImageDraw
+import pyqtgraph.opengl as gl
+
 
 
 # open camera
@@ -107,15 +109,97 @@ class WinForm(QtWidgets.QWidget):
         self.point_pos.ui.menuBtn.hide()
 
         self.score = 0
-        self.infos = QtWidgets.QLabel(f"Shoot with blinks.\nScore: {self.score}")
+        self.infos = QtWidgets.QLabel(f"Head direction 2D position")
         self.infos.setStyleSheet("font-size:24px")
         self.infos.setMinimumHeight(100)
         self.eye_opening_pb = QtWidgets.QProgressBar()
         self.eye_opening_pb.setOrientation(QtCore.Qt.Vertical)
 
+
+        # Build gl view
+        w = gl.GLViewWidget()
+        w.show()
+        w.setWindowTitle('pyqtgraph example: GLMeshItem')
+        w.setCameraPosition(distance=40)
+
+        # Put a camera
+
+        w.setCameraPosition(QtGui.QVector3D(0, -5, 20),distance=15,elevation=80,azimuth=-90 )
+        # Add a grid
+        g = gl.GLGridItem()
+        g.scale(2,2,1)
+        w.addItem(g)
+
+        #Build face reference
+        verts = np.array([
+            [0, 0, 0],
+            [2, 0, 0],
+            [1, 2, 0],
+            [1, 1, 1],
+        ])
+        faces = np.array([
+            [0, 1, 2],
+            [0, 1, 3],
+            [0, 2, 3],
+            [1, 2, 3]
+        ])
+        colors = np.array([
+            [1, 0, 0, 0.3],
+            [0, 1, 0, 0.3],
+            [0, 0, 1, 0.3],
+            [1, 1, 0, 0.3]
+        ])
+
+        ## Mesh item will automatically compute face normals.
+        self.face_shape = gl.GLMeshItem(vertexes=verts, faces=faces, faceColors=colors, smooth=False)
+        #self.face_shape.setGLOptions('additive')
+        w.addItem(self.face_shape)        
+
+        # Gaze position
+        md = gl.MeshData.sphere(rows=10, cols=20, radius=0.1)
+        self.gaze_pos = gl.GLMeshItem(
+            meshdata=md,
+            smooth=True,
+            color=(1, 0, 0, 0.2),
+            shader="balloon",
+            glOptions="additive",
+        )
+        w.addItem(self.gaze_pos)        
+
+        # Make reference
+        md = gl.MeshData.cylinder(rows=10, cols=20, radius=[0.1,0.1], length=0.5)
+        self.x = gl.GLMeshItem(
+            meshdata=md,
+            smooth=True,
+            color=(1, 0, 0, 1.0),
+            shader="balloon",
+            glOptions="additive",
+        )
+        self.x.rotate(90,0,1,0)
+        w.addItem(self.x)        
+        self.y = gl.GLMeshItem(
+            meshdata=md,
+            smooth=True,
+            color=(0, 1, 0, 1.0),
+            shader="balloon",
+        )
+        self.y.rotate(90,-1,0,0)
+        w.addItem(self.y)        
+        self.z = gl.GLMeshItem(
+            meshdata=md,
+            smooth=True,
+            color=(0, 0, 1, 1.0),
+            shader="balloon",
+        )
+        w.addItem(self.z)        
+
+
+        self.view3d = w
+
         layout.addWidget(self.infos,0,0,1,1)
         layout.addWidget(self.image,1,0,1,1)
-        layout.addWidget(self.point_pos,1,1,1,1)
+        layout.addWidget(self.point_pos,0,1,1,1)
+        layout.addWidget(self.view3d,1,1,1,1)
         layout.addWidget(self.eye_opening_pb,1,2,1,1)
 
         self.process_timer.start()
@@ -130,7 +214,7 @@ class WinForm(QtWidgets.QWidget):
         success, image = cap.read()
         
         # Opencv uses BGR format while mediapipe uses RGB format. So we need to convert it to RGB before processing the image
-        image = cv2.flip(cv2.cvtColor(image, cv2.COLOR_BGR2RGB), 1)
+        #image = cv2.flip(cv2.cvtColor(image, cv2.COLOR_BGR2RGB), 1)
 
 
         # Process the image to extract faces and draw the masks on the face in the image
@@ -151,7 +235,7 @@ class WinForm(QtWidgets.QWidget):
                     self.kalman.process(self.p2d)
                     # Filtered p2d
                     self.p2d = self.kalman.x
-
+                    self.p3d = p
 
                     # Detect blinking
                     self.left_eye_opening, self.right_eye_opening, self.is_blink, self.blink_duration = face.process_eyes(image, detect_blinks=True,  blink_th=0.35)
@@ -160,15 +244,33 @@ class WinForm(QtWidgets.QWidget):
         self.updated_image = image
         #
     def update_ui(self):
-        self.eye_opening_pb.setValue(100*(self.left_eye_opening+self.right_eye_opening)/2)
+        self.eye_opening_pb.setValue(int(100*(self.left_eye_opening+self.right_eye_opening)/2))
         self.game_ui_img = Image.fromarray(np.uint8(self.empty_image_view.copy()))
 
+        transform = QtGui.QMatrix4x4()
+        transform.setToIdentity()
+        q = get_quaternion_from_euler(self.face_ori[0],self.face_ori[1],self.face_ori[2])
+        transform.translate(self.face_pos[0]/100, self.face_pos[1]/100, self.face_pos[2]/100)
+        transform.rotate(QtGui.QQuaternion(QtGui.QVector4D(q[0],q[1],q[2],q[3])))
+        self.face_shape.setTransform(transform)
+
+
+        transform = QtGui.QMatrix4x4()
+        transform.setToIdentity()
+        transform.translate(self.p3d[0]/100, self.p3d[1]/100, self.p3d[2]/100)
+
+        self.gaze_pos.setTransform(transform)
+
+
+        self.p2d[1]=-self.p2d[1]
         pilDrawCross(self.game_ui_img, (self.p2d+np.array(image_size)//2).astype(np.int), (200,0,0), 3)
         self.game_ui_img = pilShowErrorEllipse(self.game_ui_img, 10, self.p2d+np.array(image_size)//2, self.kalman.P,(255,0,0), 2)        
         # Just put a reference on the nose
         #face.draw_reference_frame(image, pos, ori, origin=face.get_landmark_pos(Face.nose_tip_index))
         self.image.setImage(np.swapaxes(self.updated_image,0,1))
         self.point_pos.setImage(np.swapaxes(np.array(self.game_ui_img),0,1))
+
+        self.infos.setText(f"Head direction 2D projection : {self.p2d}")
 
 
 if __name__ == '__main__':

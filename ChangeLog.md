@@ -1,4 +1,9 @@
 
+# V 0.1.22
+-  Bugfixes
+- added a 3d face representation app to illustrate head and gaze estimation in 3D
+# V 0.1.21
+-  Bugfixes
 # V 0.1.20
 -  Bugfixes
 - face orientation correction enhanced
