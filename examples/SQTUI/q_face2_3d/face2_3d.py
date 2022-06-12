@@ -132,10 +132,10 @@ class WinForm(QtWidgets.QWidget):
 
         #Build face reference
         verts = np.array([
-            [0, 0, 0],
-            [2, 0, 0],
-            [1, 2, 0],
-            [1, 1, 1],
+            [-1, -1, 0],
+            [1, -1, 0],
+            [0, 1, 0],
+            [0, 0, 1],
         ])
         faces = np.array([
             [0, 1, 2],
@@ -208,6 +208,8 @@ class WinForm(QtWidgets.QWidget):
         self.setLayout(layout)
         self.updated_image = np.zeros((height,width,3))
         self.game_ui = np.zeros((height,width,3))
+
+
 
     def process(self):
         # Read image

@@ -67,6 +67,22 @@ def get_plane_infos(p1: np.ndarray, p2:np.ndarray, p3:np.ndarray):
     e2 = np.cross(n,e1)
     return (p1,e1,e2,n)
 
+
+def get_plane_point_in3d(plane:np.ndarray, pos):
+    """returns the 3d position of the point in the world out of its position inside theplance
+
+    Args:
+        plane (np.ndarray): A plan equation in form p0,e1,e2,n
+        pos (_type_): The 2D position of the point in the plane
+
+    Returns:
+        _type_: The 3d coordoinates of the point in world space
+    """
+    p0  = plane[0]
+    e1  = plane[1]
+    e2  = plane[2]
+    return p0 + pos[0]*e1+ pos[1]*e2
+
 def get_plane_line_intersection(plane:tuple, line:tuple):
     """
     Returns a 3d and 2d position of intersection between a line and a plane (if the line is parallel to the plane return None)
