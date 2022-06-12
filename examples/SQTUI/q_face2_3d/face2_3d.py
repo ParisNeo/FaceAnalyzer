@@ -193,6 +193,10 @@ class WinForm(QtWidgets.QWidget):
         )
         w.addItem(self.z)        
 
+        self.gaze_vector = gl.GLLinePlotItem(pos=np.array([[0,0,0],[0,0,1]]), width=1, antialias=False)
+        self.view_zone = gl.GLLinePlotItem(pos=np.array([[0,0,0],[0,0,1]]), width=1, antialias=False)
+        w.addItem(self.gaze_vector) 
+        w.addItem(self.view_zone)
 
         self.view3d = w
 
@@ -271,6 +275,8 @@ class WinForm(QtWidgets.QWidget):
         #face.draw_reference_frame(image, pos, ori, origin=face.get_landmark_pos(Face.nose_tip_index))
         self.image.setImage(np.swapaxes(self.updated_image,0,1))
         self.point_pos.setImage(np.swapaxes(np.array(self.game_ui_img),0,1))
+
+        self.gaze_vector.setData(pos=np.array([[self.face_pos[0]/100, self.face_pos[1]/100, self.face_pos[2]/100],[self.p3d[0]/100, self.p3d[1]/100, self.p3d[2]/100]]));
 
         self.infos.setText(f"Head direction 2D projection : {self.p2d}")
 
