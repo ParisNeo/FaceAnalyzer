@@ -781,6 +781,8 @@ class Face():
             return None, None
 
         # save posture
+        face_pos[0]*=-1
+        face_pos[1]*=-1
         self.pos = face_pos
         self.ori = face_ori
 
