@@ -17,7 +17,7 @@ requirements_dev = read_requirements("requirements_dev.txt")
 
 setuptools.setup(
     name="FaceAnalyzer",
-    version="0.1.24",
+    version="0.1.25",
     author="Saifeddine ALOUI",
     author_email="aloui.saifeddine@gmail.com",
     description="A python library for face detection and features extraction based on mediapipe library",

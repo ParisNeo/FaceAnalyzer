@@ -350,7 +350,24 @@ class Face():
         338
     ]
 
-
+    face_forhead_indices = [
+        10,
+        109,
+        67,
+        103,
+        104,
+        105,
+        66,
+        107,
+        9,
+        336,
+        296,
+        334,
+        333,
+        332,
+        297,
+        338
+    ]
     all_face_features = list(range(468))
     def __init__(self, landmarks:NamedTuple = None, image_shape: tuple = (640, 480)):
         """Creates an instance of Face

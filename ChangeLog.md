@@ -1,4 +1,7 @@
 
+# V 0.1.25
+Added chessboard asset for camera calibration
+
 # V 0.1.22
 -  Bugfixes
 - added a 3d face representation app to illustrate head and gaze estimation in 3D

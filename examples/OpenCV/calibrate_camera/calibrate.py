@@ -5,7 +5,8 @@
     Description :
         Calibrates a calmera in order to account for its distortions
         This can be done once and then you can copy the generated cam_calib.pkl file in the folder of the example you wish to 
-        use the calibration for
+        use the calibration for.
+        Use the svg asset Checkerboard-A4-25mm-10x7 that yoyu can find in the assets folder in the repository to print the chessboard image needed to do this calibration
 
 <================"""
 
