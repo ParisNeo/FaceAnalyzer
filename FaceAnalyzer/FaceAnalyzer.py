@@ -23,7 +23,7 @@ class FaceAnalyzer():
     """A class that analyzes the facial components
     """
 
-    def __init__(self, max_nb_faces=1, image_shape: tuple = (640, 480)):
+    def __init__(self, max_nb_faces=1, image_shape: tuple = (640, 480), static_image_mode=False):
         """Creates an instance of the FaceAnalyzer object
 
         Args:
@@ -31,7 +31,7 @@ class FaceAnalyzer():
             image_shape (tuple, optional): The shape of the image to be processed. Defaults to (480, 640).
         """
         self.mp_drawing = mp.solutions.drawing_utils
-        self.fmd = mp.solutions.face_mesh.FaceMesh(refine_landmarks=True, max_num_faces=max_nb_faces)
+        self.fmd = mp.solutions.face_mesh.FaceMesh(refine_landmarks=True, max_num_faces=max_nb_faces, static_image_mode=static_image_mode)
         self.max_nb_faces = max_nb_faces
 
         self.faces = [Face(image_shape=image_shape) for i in range(max_nb_faces)]
