@@ -1241,7 +1241,7 @@ class Face():
             landmarks = self.npLandmarks[landmark_indices, :2]
         p1 = landmarks.min(axis=0)-np.array(margins[0:2])
         p2 = landmarks.max(axis=0)+np.array(margins[2:4])
-        return image[int(p1[1]):int(p2[1]),int(p1[0]):int(p2[0])]
+        return image[max(int(p1[1]),0):min(int(p2[1]),self.image_shape[0]),max(int(p1[0]),0):min(int(p2[0]),self.image_shape[1])]
 
     def getFace(self, image:np.ndarray, src_triangles:list(), landmark_indices:list=None)->np.ndarray:
         """Gets an image of the face extracted from the original image (only the face with no background)
