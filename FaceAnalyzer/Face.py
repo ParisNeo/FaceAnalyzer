@@ -249,6 +249,8 @@ class Face():
                             465
                             ]
 
+    forehead_center_index = [151]
+    
     forehead_indices = [
         301,
         298,
