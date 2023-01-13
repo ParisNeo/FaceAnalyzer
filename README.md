@@ -1,4 +1,8 @@
 # FaceAnalyzer
+[![GitHub release](https://badgen.net/github/release/ParisNeo/FaceAnalyzer)](https://github.com/ParisNeo/FaceAnalyzer/releases)
+[![GitHub license](https://badgen.net/github/license/ParisNeo/FaceAnalyzer)](https://github.com/ParisNeo/FaceAnalyzer/blob/master/LICENSE)
+
+
 A python library for face detection and features extraction based on mediapipe library
 
 ## Introduction
