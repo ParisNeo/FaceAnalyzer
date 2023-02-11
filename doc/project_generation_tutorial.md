@@ -3,10 +3,13 @@
 ## Create distribution
 
 On linux:
+
 ```bash
 python3 setup.py sdist bdist_wheel
 ```
+
 On Windows:
+
 ```bash
 python setup.py sdist bdist_wheel
 ```
@@ -19,20 +22,21 @@ To install FaceAnalyzer locally while pointing to the FaceAnalyzer path (useful 
 python -m pip install --upgrade --force-reinstall -e .
 ```
 
-
 To install QGraphViz locally without pushing it to pip do the following
+
 ```bash
 python -m pip install --upgrade --force-reinstall dist/FaceAnalyzer-*.*.*-py3-none-any.whl
 ```
 
-replace * with the version you are using
+replace \* with the version you are using
 
 ## Publish it
+
 You would need to install twine before pushing the file
 
 pip install twine
 
-python -m twine upload dist/*
+python -m twine upload dist/\*
 
 ## Update README.md
 
