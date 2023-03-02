@@ -790,8 +790,8 @@ class Face():
 
         face_2d_positions = self.npLandmarks[self.face_reference_landmark_ids,:2]
         (success, face_ori, face_pos, _) = cv2.solvePnPRansac(
-                                                    self.face_3d_reference_positions.astype(np.float),
-                                                    face_2d_positions.astype(np.float), 
+                                                    self.face_3d_reference_positions.astype(np.float32),
+                                                    face_2d_positions.astype(np.float32), 
                                                     camera_matrix, 
                                                     dist_coeffs,
                                                     flags=cv2.SOLVEPNP_ITERATIVE)

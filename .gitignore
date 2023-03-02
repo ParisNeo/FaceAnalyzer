@@ -134,3 +134,6 @@ dmypy.json
 # Calibration files
 cam_calib.pkl
 plane_calib.pkl
+
+# conda files
+.conda

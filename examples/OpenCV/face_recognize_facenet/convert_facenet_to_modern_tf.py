@@ -7,6 +7,10 @@
         This code converts the file to modern format and makes it simple to use
         Download the facenet model from here : https://drive.google.com/drive/folders/1-Frhel960FIv9jyEWd_lwY5bVYipizIT?usp=sharing
         Put the file facenet_keras_weights.h5 in facenet subfolder 
+        you need to install tensorflow first
+        pip install tensorflow
+        On windows we advise installing tensorflow 2.10 if you want to use the gpu
+        then run this script to convert facenet to modern tensorflow
 <================"""
 from pathlib import Path
 old_weights_path = Path(__file__).parent/"facenet/facenet_keras_weights.h5"

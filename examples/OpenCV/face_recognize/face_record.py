@@ -9,16 +9,20 @@
 
 <================"""
 
-import numpy as np
 from pathlib import Path
 import cv2
 import time
 
 from FaceAnalyzer import FaceAnalyzer
 
-import matplotlib.pyplot as plt
 from pathlib import Path
 import pickle
+import tkinter as tk
+from tkinter import simpledialog
+
+# create Tkinter root window
+root = tk.Tk()
+root.withdraw()
 
 # If faces path is empty then 
 faces_path = Path(__file__).parent/"faces"
@@ -42,10 +46,14 @@ curr_frame_time = time.time()
 
 box_colors=[
     (255,0,0),
-    (255,0,255),
+    (0,255,0),
+    (0,0,255),
+    (255,255,0),
     (255,0,255),
     
 ]
+
+
 # Main Loop
 while cap.isOpened():
     # Read image
@@ -78,12 +86,13 @@ while cap.isOpened():
     wk = cv2.waitKey(5)
     if wk & 0xFF == 27: # If escape is pressed then return
         break
-    if wk & 0xFF == 115: # If s is pressed then take a snapshot
+    if wk & 0xFF == 115: # If s is pressed then take a snapshot 
         # Let's normalize everything
         vertices-=vertices.min(axis=0)
         vertices/=vertices.max(axis=0)
         # Now we save it.
-        name = input("name?")
+        # create a dialog box to ask for the subject name
+        name = simpledialog.askstring(title="Subject Name", prompt="Enter name:")
         fn = faces_path/f"{name}.pkl"
         if fn.exists():
             with open(str(fn),"rb") as f:
