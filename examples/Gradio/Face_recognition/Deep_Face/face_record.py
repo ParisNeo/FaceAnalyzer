@@ -85,7 +85,7 @@ class UI():
                                 self.img = gr.Image(label="Input Image", source="webcam", streaming=True)
                                 self.txtFace_name = gr.Textbox(label="face_name")
                                 self.txtFace_name.change(self.set_face_name, inputs=self.txtFace_name, show_progress=False)
-                                self.status = gr.Label(label="face_name")
+                                self.status = gr.Label(label="Status")
                                 self.img.change(self.record, inputs=self.img, outputs=self.status, show_progress=False)
                             with gr.Column():
                                 self.btn_start = gr.Button("Start Recording face")
@@ -101,7 +101,7 @@ class UI():
                                 self.add_file.change(self.add_files, self.add_file, self.gallery)
                                 self.txtFace_name2 = gr.Textbox(label="face_name")
                                 self.txtFace_name2.change(self.set_face_name, inputs=self.txtFace_name2, show_progress=False)
-                                self.status = gr.Label(label="face_name")
+                                self.status = gr.Label(label="Status")
                                 self.img.change(self.record, inputs=self.img, outputs=self.status, show_progress=False)
                             with gr.Column():
                                 self.btn_start = gr.Button("Build face embeddings")
@@ -216,6 +216,8 @@ class UI():
 
     def record(self, image):
         if self.face_name is None:
+            self.embeddings_cloud=[]
+            self.is_recording=False
             return "Please input a face name"
         if self.is_recording and image is not None:
             if self.i < self.nb_images:
