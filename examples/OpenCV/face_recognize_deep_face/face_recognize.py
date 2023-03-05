@@ -22,6 +22,10 @@ import tensorflow as tf
 from tqdm import tqdm  # used to draw a progress bar pip install tqdm
 from deepface import DeepFace
 
+# Important to set. If higher than this distance, the face is considered unknown
+threshold = 4e-1
+
+
 def cosine_distance(u, v):
     """
     Computes the cosine distance between two vectors.
@@ -38,8 +42,6 @@ def cosine_distance(u, v):
     norm_v = np.linalg.norm(v)
     return 1 - (dot_product / (norm_u * norm_v))
 
-threshold = 70
-max_dist = 100 # Maximum distance between the face and the reference face
 
 
 # If faces path is empty then make it

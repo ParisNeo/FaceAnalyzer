@@ -46,7 +46,7 @@ import tensorflow as tf
 from tqdm import tqdm  # used to draw a progress bar pip install tqdm
 from sklearn.decomposition import PCA
 
-
+# Important to set. If higher than this distance, the face is considered unknown
 threshold = 1
 
 def mahalanobis_distance (pca, point, mean, inv_cov):

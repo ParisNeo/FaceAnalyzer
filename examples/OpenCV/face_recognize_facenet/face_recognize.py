@@ -41,6 +41,9 @@ import pickle
 import tensorflow as tf
 from tqdm import tqdm  # used to draw a progress bar pip install tqdm
 
+# Important to set. If higher than this distance, the face is considered unknown
+threshold = 70
+
 
 def cosine_distance(u, v):
     """
@@ -58,8 +61,6 @@ def cosine_distance(u, v):
     norm_v = np.linalg.norm(v)
     return 1 - (dot_product / (norm_u * norm_v))
 
-threshold = 70
-max_dist = 100 # Maximum distance between the face and the reference face
 
 facenet_path = Path(__file__).parent/"facenet"/"facenet.h5"
 if not facenet_path.exists():
