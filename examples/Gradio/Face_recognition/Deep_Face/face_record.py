@@ -10,26 +10,16 @@
 import numpy as np
 from pathlib import Path
 import cv2
-import time
 
 from numpy.lib.type_check import imag
 from FaceAnalyzer import FaceAnalyzer
 
-import matplotlib.pyplot as plt
 from pathlib import Path
 import pickle
-import tensorflow as tf
-from tqdm import tqdm  # used to draw a progress bar pip install tqdm
-import tkinter as tk
-from tkinter import simpledialog
 from deepface import DeepFace
 
 # Number of images to use to build the embedding
 nb_images=50
-
-# create Tkinter root window
-root = tk.Tk()
-root.withdraw()
 
 
 # If faces path is empty then make it
@@ -67,6 +57,7 @@ class UI():
         self.current_name = None
         self.current_face_files = []
         self.draw_landmarks = True
+        self.upgrade_faces()
 
         with gr.Blocks() as demo:
             gr.Markdown("## FaceAnalyzer face recognition test")
@@ -119,11 +110,19 @@ class UI():
                     with gr.Blocks():
                         with gr.Row():
                             with gr.Column():
-                                self.faces_list = gr.Dataframe(
-                                    headers=["Face Name"],
-                                    datatype=["str"],
-                                    label="Faces",
-                                )
+                                if len(self.known_faces_names)>0:
+                                    self.faces_list = gr.Dataframe(
+                                        headers=["Face Name"],
+                                        datatype=["str"],
+                                        label="Faces",
+                                        value=[[n] for n in self.known_faces_names]
+                                    )
+                                else:
+                                    self.faces_list = gr.Dataframe(
+                                        headers=["Face Name"],
+                                        datatype=["str"],
+                                        label="Faces"
+                                    )
             with gr.Row():
                 with gr.Accordion(label="Options", open=False):
                     self.sld_threshold = gr.Slider(1e-2,10,4e-1,step=1e-2,label="Recognition threshold")
@@ -133,7 +132,6 @@ class UI():
                     self.cb_draw_landmarks = gr.Checkbox(label="Draw landmarks", value=True)
                     self.cb_draw_landmarks.change(self.set_draw_landmarks, self.cb_draw_landmarks)
 
-        self.upgrade_faces()
         demo.queue().launch()
     def add_files(self, files):
         for file in files:
@@ -176,7 +174,8 @@ class UI():
                 finger_print = pickle.load(f)
                 self.known_faces.append(finger_print)
             self.known_faces_names.append(file.stem)
-        self.faces_list.update(self.known_faces_names)
+        if hasattr(self, "faces_list"):
+            self.faces_list.update([[n] for n in self.known_faces_names])
 
     def set_face_name(self, face_name):
         self.face_name=face_name
