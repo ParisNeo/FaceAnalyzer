@@ -85,9 +85,6 @@ cv2.resizeWindow('Face Mesh', (640,480))
 # Build face analyzer while specifying that we want to extract just a single face
 fa = FaceAnalyzer(max_nb_faces=3)
 
-# FPS processing
-prev_frame_time = time.time()
-curr_frame_time = time.time()
 
 box_colors=[
     (255,0,0),
@@ -105,7 +102,6 @@ for file in face_files:
         known_faces.append(finger_print)
     known_faces_names.append(file.stem)
 
-print(f'Distance between two is :{np.linalg.norm(known_faces[0]["mean"]-known_faces[1]["mean"])}')
 # Main Loop
 while cap.isOpened():
     # Read image

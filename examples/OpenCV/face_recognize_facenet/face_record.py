@@ -44,6 +44,8 @@ from tqdm import tqdm  # used to draw a progress bar pip install tqdm
 import tkinter as tk
 from tkinter import simpledialog
 
+nb_images = 50
+
 # create Tkinter root window
 root = tk.Tk()
 root.withdraw()
@@ -117,28 +119,30 @@ while cap.isOpened():
     if wk & 0xFF == 115: # If s is pressed then take a snapshot
         embeddings_cloud = []
         i = 0
-        for i in tqdm(range(10)):
-            # Read image
-            success, image = cap.read()
-            
-            # Opencv uses BGR format while mediapipe uses RGB format. So we need to convert it to RGB before processing the image
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        
+        with tqdm(total=nb_images) as pbar:
+            while i < nb_images:
+                # Read image
+                success, image = cap.read()
+                
+                # Opencv uses BGR format while mediapipe uses RGB format. So we need to convert it to RGB before processing the image
+                image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-            # Process the image to extract faces and draw the masks on the face in the image
-            fa.process(image)
-            if fa.nb_faces>0:
-                face = fa.faces[0]
-                vertices = face.get_face_outer_vertices()
-                image = face.getFaceBox(image, vertices)
-                embedding = facenet.predict(cv2.resize(image,(160,160))[None,...], verbose=False)
-                embeddings_cloud.append(embedding[0,:])
-                i+=1
-                time.sleep(1)
-            try:
-                cv2.imshow('Face Mesh', cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
-            except Exception as ex:
-                print(ex)
-            wk = cv2.waitKey(5)
+                # Process the image to extract faces and draw the masks on the face in the image
+                fa.process(image)
+                if fa.nb_faces>0:
+                    face = fa.faces[0]
+                    vertices = face.get_face_outer_vertices()
+                    image = face.getFaceBox(image, vertices)
+                    embedding = facenet.predict(cv2.resize(image,(160,160))[None,...], verbose=False)
+                    embeddings_cloud.append(embedding[0,:])
+                    i+=1
+                    pbar.update(1)
+                try:
+                    cv2.imshow('Face Mesh', cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+                except Exception as ex:
+                    print(ex)
+                wk = cv2.waitKey(5)
         # Now let's find out where the face lives inside the latent space (128 dimensions space)
 
         embeddings_cloud = np.array(embeddings_cloud)
@@ -149,7 +153,7 @@ while cap.isOpened():
         name = simpledialog.askstring(title="Subject Name", prompt="Enter name:")
         with open(str(faces_path/f"{name}.pkl"),"wb") as f:
             pickle.dump({"mean":embeddings_cloud_mean, "inv_cov":embeddings_cloud_inv_cov},f)
-        print("Saved")
+        print(f"Saved {name} embeddings")
 
 # Close the camera properly
 cap.release()

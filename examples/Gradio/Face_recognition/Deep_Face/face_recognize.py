@@ -21,6 +21,7 @@ import pickle
 import tensorflow as tf
 from tqdm import tqdm  # used to draw a progress bar pip install tqdm
 from deepface import DeepFace
+import gradio as gr
 
 # Important to set. If higher than this distance, the face is considered unknown
 threshold = 4e-1
@@ -49,22 +50,14 @@ faces_path = Path(__file__).parent/"faces"
 if not faces_path.exists():
     faces_path.mkdir(parents=True, exist_ok=True)
 
-# open camera
-cap = cv2.VideoCapture(0)
-
-# Build a window
-cv2.namedWindow('Face Mesh', flags=cv2.WINDOW_NORMAL)
-cv2.resizeWindow('Face Mesh', (640,480))
 
 # Build face analyzer while specifying that we want to extract just a single face
 fa = FaceAnalyzer(max_nb_faces=3)
-
 
 box_colors=[
     (255,0,0),
     (255,0,255),
     (255,0,255),
-    
 ]
 # Load faces
 known_faces=[]
@@ -76,14 +69,8 @@ for file in face_files:
         known_faces.append(finger_print)
     known_faces_names.append(file.stem)
 
-# Main Loop
-while cap.isOpened():
-    # Read image
-    success, image = cap.read()
-    
-    # Opencv uses BGR format while mediapipe uses RGB format. So we need to convert it to RGB before processing the image
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
+def recognize_faces(image):
     # Process the image to extract faces and draw the masks on the face in the image
     fa.process(image)
 
@@ -112,33 +99,22 @@ while cap.isOpened():
                         nearest = i
                         
                 if nearest_distance>threshold:
-                    face.draw_bounding_box(image, thickness=5,text=f"Unknown:{nearest_distance:.3e}")
+                    face.draw_bounding_box(image, thickness=1,text=f"Unknown:{nearest_distance:.3e}")
                 else:
-                    face.draw_bounding_box(image, thickness=5,text=f"{known_faces_names[nearest]}:{nearest_distance:.3e}")
+                    face.draw_bounding_box(image, thickness=1,text=f"{known_faces_names[nearest]}:{nearest_distance:.3e}")
             except Exception as ex:
                 pass
-            #face.draw_bounding_box(image, thickness=5,text=f"{known_faces_names[nearest]}: {100*(max_dist-nearest_distance)/max_dist:.2f}%" if nearest_distance<max_dist else "unknown")
-    # Show the image
-    try:
-        cv2.imshow('Face Mesh', cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
-    except Exception as ex:
-        print(ex)
-    
-    # Wait for key stroke for 5 ms
-    wk = cv2.waitKey(5)
-    if wk & 0xFF == 27: # If escape is pressed then return
-        break
-    if wk & 0xFF == 115: # If s is pressed then take a snapshot
-        sc_dir = Path(__file__).parent/"screenshots"
-        if not sc_dir.exists():
-            sc_dir.mkdir(exist_ok=True, parents=True)
-        i = 1
-        file = sc_dir /f"sc_{i}.jpg"
-        while file.exists():
-            i+=1
-            file = sc_dir /f"sc_{i}.jpg"
-        cv2.imwrite(str(file),cv2.cvtColor(image,cv2.COLOR_BGR2RGB))
-        print("Shot")
 
-# Close the camera properly
-cap.release()
+    # Return the resulting frame
+    return image
+
+# Define Gradio interface
+iface = gr.Interface(fn=recognize_faces, 
+                     inputs=gr.Image(source="webcam", streaming=True), 
+                     outputs="image",
+                     live=True)
+
+# Enable the event queue and launch the interface
+iface.queue().launch()
+
+

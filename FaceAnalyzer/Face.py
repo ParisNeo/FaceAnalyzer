@@ -1229,6 +1229,7 @@ class Face():
             image (np.ndarray): Image to extract the face from
             src_triangles (list): The delaulay triangles indices (look at triangulate)
             landmark_indices (list, optional): The list of landmarks to be used (the same list used for the triangulate method that allowed the extraction of the triangles). Defaults to None.
+            margins (tuple, optional): Margin around the face (left, top, right, bottom). Defaults to (0,0,0,0).
 
         Returns:
             np.ndarray: Face drawn on a black background (the size of the image is equal of that of the face in the original image)
@@ -1241,9 +1242,29 @@ class Face():
             landmarks = self.npLandmarks[:, :2]
         else:
             landmarks = self.npLandmarks[landmark_indices, :2]
-        p1 = landmarks.min(axis=0)-np.array(margins[0:2])
-        p2 = landmarks.max(axis=0)+np.array(margins[2:4])
-        return image[max(int(p1[1]),0):min(int(p2[1]),self.image_shape[0]),max(int(p1[0]),0):min(int(p2[0]),self.image_shape[1])]
+
+        # Calculate original dimensions of image
+        height, width = image.shape[:2]
+
+        # Calculate new dimensions of cropped image
+        x1, y1 = landmarks.min(axis=0) - np.array(margins[0:2])
+        x2, y2 = landmarks.max(axis=0) + np.array(margins[2:4])
+        new_width = int(x2 - x1)
+        new_height = int(y2 - y1)
+
+        # Check if new dimensions are within original image frame
+        if x1 < 0:
+            x1 = 0
+        if y1 < 0:
+            y1 = 0
+        if x2 > width:
+            x2 = width
+        if y2 > height:
+            y2 = height
+
+        # Crop the image using adjusted dimensions
+        return image[int(y1):int(y2), int(x1):int(x2),...]
+
 
     def getFace(self, image:np.ndarray, src_triangles:list(), landmark_indices:list=None)->np.ndarray:
         """Gets an image of the face extracted from the original image (only the face with no background)
