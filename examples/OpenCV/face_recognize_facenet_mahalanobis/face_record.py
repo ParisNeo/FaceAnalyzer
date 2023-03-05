@@ -43,6 +43,10 @@ import tensorflow as tf
 from tqdm import tqdm  # used to draw a progress bar pip install tqdm
 import tkinter as tk
 from tkinter import simpledialog
+from sklearn.decomposition import PCA
+
+# Set the subspace size
+subspace_size = 2
 
 # create Tkinter root window
 root = tk.Tk()
@@ -117,7 +121,7 @@ while cap.isOpened():
     if wk & 0xFF == 115: # If s is pressed then take a snapshot
         embeddings_cloud = []
         i = 0
-        for i in tqdm(range(10)):
+        for i in tqdm(range(100)):
             # Read image
             success, image = cap.read()
             
@@ -130,10 +134,9 @@ while cap.isOpened():
                 face = fa.faces[0]
                 vertices = face.get_face_outer_vertices()
                 image = face.getFaceBox(image, vertices)
-                embedding = facenet.predict(cv2.resize(image,(160,160))[None,...], verbose=False)
-                embeddings_cloud.append(embedding[0,:])
-                i+=1
-                time.sleep(1)
+                if i%10==0:
+                    embedding = facenet.predict(cv2.resize(image,(160,160))[None,...], verbose=False)
+                    embeddings_cloud.append(embedding[0,:])
             try:
                 cv2.imshow('Face Mesh', cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
             except Exception as ex:
@@ -142,14 +145,16 @@ while cap.isOpened():
         # Now let's find out where the face lives inside the latent space (128 dimensions space)
 
         embeddings_cloud = np.array(embeddings_cloud)
-        embeddings_cloud_mean = embeddings_cloud.mean(axis=0)
-        embeddings_cloud_inv_cov = embeddings_cloud.std(axis=0)
+        pca = PCA(subspace_size)
+        embeddings_cloud_converted = pca.fit_transform(embeddings_cloud)
+        embeddings_cloud_mean = embeddings_cloud_converted.mean(axis=0)
+        embeddings_cloud_inv_cov = np.linalg.inv(np.cov(embeddings_cloud_converted.T))
         # Now we save it.
         # create a dialog box to ask for the subject name
         name = simpledialog.askstring(title="Subject Name", prompt="Enter name:")
         with open(str(faces_path/f"{name}.pkl"),"wb") as f:
-            pickle.dump({"mean":embeddings_cloud_mean, "inv_cov":embeddings_cloud_inv_cov},f)
-        print("Saved")
+            pickle.dump({"pca":pca, "mean":embeddings_cloud_mean, "inv_cov":embeddings_cloud_inv_cov},f)
+
 
 # Close the camera properly
 cap.release()

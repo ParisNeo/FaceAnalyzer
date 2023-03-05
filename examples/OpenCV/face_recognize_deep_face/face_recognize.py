@@ -3,28 +3,8 @@
     Author  : Saifeddine ALOUI (ParisNeo)
     Description :
         An example to show how to combine face analyzer with facenet and use it to recognier faces
-        Download the facenet model from here : https://drive.google.com/drive/folders/1-Frhel960FIv9jyEWd_lwY5bVYipizIT?usp=sharing
-        Put the file facenet_keras_weights.h5 in facenet subfolder 
-        you need to install tensorflow first
-        pip install tensorflow
-        if you have a gpu, install cuda, it will make the output smoother. We advise you to use conda:
-        
-        conda install -c conda-forge cudatoolkit=11.2 cudnn=8.1.0
-
-        on, powershell or linux you can use this:
-        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib/
-
-        on cmd, you can use this
-        setx LD_LIBRARY_PATH "%LD_LIBRARY_PATH%;%CONDA_PREFIX%\lib"
-
-        pip install tensorflow
-
-        on windows pleasure install v 2.10 if you want to  use thegpu
-        pip install tensorflow==2.10
-
-        or install cuda and cudnn independently and just use pip to install the tensorflow
-
-        then run convert_facenet_to_modern_tf to convert the model to modern tensorflow
+        Make sure you install deepface
+        pip install deepface
 
 
 <================"""
@@ -40,7 +20,7 @@ from pathlib import Path
 import pickle
 import tensorflow as tf
 from tqdm import tqdm  # used to draw a progress bar pip install tqdm
-
+from deepface import DeepFace
 
 def cosine_distance(u, v):
     """
@@ -61,13 +41,6 @@ def cosine_distance(u, v):
 threshold = 70
 max_dist = 100 # Maximum distance between the face and the reference face
 
-facenet_path = Path(__file__).parent/"facenet"/"facenet.h5"
-if not facenet_path.exists():
-    print("Couldn't fine facenet.\nPlease download it from :https://drive.google.com/file/d/1PZ_6Zsy1Vb0s0JmjEmVd8FS99zoMCiN1/view?usp=sharing then convert it")
-    exit()
-# 
-
-facenet = tf.keras.models.load_model(str(facenet_path))
 
 # If faces path is empty then make it
 faces_path = Path(__file__).parent/"faces"
@@ -121,8 +94,8 @@ while cap.isOpened():
             try:
                 face = fa.faces[i]
                 vertices = face.get_face_outer_vertices()
-                face_image = face.getFaceBox(image, vertices)
-                embedding = facenet.predict(cv2.resize(face_image,(160,160))[None,...], verbose=False)[0,...]
+                face_image = face.getFaceBox(image, vertices, margins=(40,40,40,40))
+                embedding = DeepFace.represent(face_image)[0]["embedding"]
                 face.draw_landmarks(image, color=(0,0,0))
                 vertices = face.get_realigned_landmarks_pos()[:,:2]
                 face.draw_landmarks(image,vertices, color=(255,0,0))

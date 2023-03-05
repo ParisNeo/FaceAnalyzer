@@ -3,6 +3,9 @@
     Author  : Saifeddine ALOUI (ParisNeo)
     Description :
         An example to show how to combine face analyzer with facenet and use it to recognier faces
+
+        Please install scikit-learn library
+        pip install scikit-learn
         Download the facenet model from here : https://drive.google.com/drive/folders/1-Frhel960FIv9jyEWd_lwY5bVYipizIT?usp=sharing
         Put the file facenet_keras_weights.h5 in facenet subfolder 
         you need to install tensorflow first
@@ -27,6 +30,7 @@
         then run convert_facenet_to_modern_tf to convert the model to modern tensorflow
 
 
+
 <================"""
 
 import numpy as np
@@ -40,25 +44,31 @@ from pathlib import Path
 import pickle
 import tensorflow as tf
 from tqdm import tqdm  # used to draw a progress bar pip install tqdm
+from sklearn.decomposition import PCA
 
 
-def cosine_distance(u, v):
+threshold = 1
+
+def mahalanobis_distance (pca, point, mean, inv_cov):
     """
-    Computes the cosine distance between two vectors.
+    Checks if a point is inside the 1 sigma around the mean of a multidimensional distribution.
 
     Parameters:
-        u (numpy array): A 1-dimensional numpy array representing the first vector.
-        v (numpy array): A 1-dimensional numpy array representing the second vector.
+        mean (numpy.ndarray): The mean of the distribution.
+        cov (numpy.ndarray): The covariance matrix of the distribution.
+        point (numpy.ndarray): The point to check.
 
     Returns:
-        float: The cosine distance between the two vectors.
+        bool: True if the point is inside the 1 sigma around the mean, False otherwise.
     """
-    dot_product = np.dot(u, v)
-    norm_u = np.linalg.norm(u)
-    norm_v = np.linalg.norm(v)
-    return 1 - (dot_product / (norm_u * norm_v))
+    # Perform PCA to project the point and the covariance matrix into a subspace
+    point = pca.transform(point[None,:])[0,:]
 
-threshold = 70
+    diff = point - mean
+    return np.sqrt(diff.T @ inv_cov @ diff)
+
+    return md
+
 max_dist = 100 # Maximum distance between the face and the reference face
 
 facenet_path = Path(__file__).parent/"facenet"/"facenet.h5"
@@ -129,23 +139,21 @@ while cap.isOpened():
                 nearest_distance = 1e100
                 nearest = 0
                 for i, known_face in enumerate(known_faces):
-                    # absolute distance
-                    distance = np.abs(known_face["mean"]-embedding).sum()
-                    # euclidian distance
-                    #diff = known_face["mean"]-embedding
-                    #distance = np.sqrt(diff@diff.T)
-                    # Cosine distance
-                    distance = cosine_distance(known_face["mean"], embedding)
-                    if distance<nearest_distance:
-                        nearest_distance = distance
-                        nearest = i
-                        
+                    try:
+                        # Compute the Mahalanobis distance
+                        mahalanobis = mahalanobis_distance(known_face["pca"], embedding,known_face["mean"], known_face["inv_cov"])
+                        if mahalanobis<nearest_distance:
+                            nearest_distance = mahalanobis
+                            nearest = i
+                    except Exception as ex:
+                        print(ex)
                 if nearest_distance>threshold:
                     face.draw_bounding_box(image, thickness=5,text=f"Unknown:{nearest_distance:.3e}")
                 else:
-                    face.draw_bounding_box(image, thickness=5,text=f"{known_faces_names[nearest]}:{nearest_distance:.3e}")
-            except Exception as ex:
+                    face.draw_bounding_box(image, thickness=5,text=f"{known_faces_names[nearest]}:{nearest_distance:.3e }")
+            except:
                 pass
+
             #face.draw_bounding_box(image, thickness=5,text=f"{known_faces_names[nearest]}: {100*(max_dist-nearest_distance)/max_dist:.2f}%" if nearest_distance<max_dist else "unknown")
     # Show the image
     try:

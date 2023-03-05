@@ -2,29 +2,8 @@
     Example : extract_record.py
     Author  : Saifeddine ALOUI (ParisNeo)
     Description :
-        Records a person's face in order to recognize it later.
-        Download the facenet model from here : https://drive.google.com/drive/folders/1-Frhel960FIv9jyEWd_lwY5bVYipizIT?usp=sharing
-        Put the file facenet_keras_weights.h5 in facenet subfolder 
-        you need to install tensorflow first
-        pip install tensorflow
-        if you have a gpu, install cuda, it will make the output smoother. We advise you to use conda:
-        
-        conda install -c conda-forge cudatoolkit=11.2 cudnn=8.1.0
-
-        on, powershell or linux you can use this:
-        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib/
-
-        on cmd, you can use this
-        setx LD_LIBRARY_PATH "%LD_LIBRARY_PATH%;%CONDA_PREFIX%\lib"
-
-        pip install tensorflow
-
-        on windows pleasure install v 2.10 if you want to  use thegpu
-        pip install tensorflow==2.10
-
-        or install cuda and cudnn independently and just use pip to install the tensorflow
-
-        then run convert_facenet_to_modern_tf to convert the model to modern tensorflow
+        Make sure you install deepface
+        pip install deepface
 
 <================"""
 
@@ -43,17 +22,12 @@ import tensorflow as tf
 from tqdm import tqdm  # used to draw a progress bar pip install tqdm
 import tkinter as tk
 from tkinter import simpledialog
+from deepface import DeepFace
 
 # create Tkinter root window
 root = tk.Tk()
 root.withdraw()
 
-facenet_path = Path(__file__).parent/"facenet"/"facenet.h5"
-if not facenet_path.exists():
-    print("Couldn't fine facenet.\nPlease download it from :https://drive.google.com/file/d/1PZ_6Zsy1Vb0s0JmjEmVd8FS99zoMCiN1/view?usp=sharing")
-    exit()
-
-facenet = tf.keras.models.load_model(str(facenet_path))
 
 # If faces path is empty then make it
 faces_path = Path(__file__).parent/"faces"
@@ -127,13 +101,15 @@ while cap.isOpened():
             # Process the image to extract faces and draw the masks on the face in the image
             fa.process(image)
             if fa.nb_faces>0:
-                face = fa.faces[0]
-                vertices = face.get_face_outer_vertices()
-                image = face.getFaceBox(image, vertices)
-                embedding = facenet.predict(cv2.resize(image,(160,160))[None,...], verbose=False)
-                embeddings_cloud.append(embedding[0,:])
-                i+=1
-                time.sleep(1)
+                try:
+                    face = fa.faces[0]
+                    vertices = face.get_face_outer_vertices()
+                    image = face.getFaceBox(image, vertices, margins=(40,40,40,40))
+                    embedding = DeepFace.represent(image)[0]["embedding"]
+                    embeddings_cloud.append(embedding)
+                    time.sleep(1)
+                except Exception as ex:
+                    print(ex)
             try:
                 cv2.imshow('Face Mesh', cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
             except Exception as ex:
