@@ -104,9 +104,9 @@ class UI():
                         with gr.Row():
                             with gr.Column():
                                 self.gallery = gr.Gallery(
-                                    label="Uploaded Images", show_label=False, elem_id="gallery"
+                                    label="Uploaded Images", show_label=True, height=300, elem_id="gallery"
                                 ).style(grid=[2], height="auto")
-                                self.btn_clear = gr.Button("Clear")
+                                self.btn_clear = gr.Button("Clear Gallery")
 
                                 self.add_file = gr.Files(label="Files",file_types=["image"])
                                 self.add_file.change(self.add_files, self.add_file, self.gallery)
@@ -114,8 +114,8 @@ class UI():
                                 self.btn_start = gr.Button("Build face embeddings")
                                 self.status = gr.Label(label="Status")
                                 self.txtFace_name2.change(self.set_face_name, inputs=self.txtFace_name2, outputs=self.status, show_progress=False)
-                                self.btn_start.click(self.record_from_files, inputs=self.gallery, outputs=self.status, show_progress=False)
-                                self.btn_clear.click(self.clear_galery,[],[])
+                                self.btn_start.click(self.record_from_files, inputs=self.gallery, outputs=self.status, show_progress=True)
+                                self.btn_clear.click(self.clear_galery,[],[self.gallery, self.add_file])
                 with gr.TabItem('Known Faces List'):
                     with gr.Blocks():
                         with gr.Row():
@@ -148,7 +148,7 @@ class UI():
         demo.queue().launch()
 
     def clear_galery(self):
-        self.gallery.update(value=[])
+        return self.gallery.update(value=[]), self.add_file.update(value=[])
 
     def start_webcam(self):
         self.webcam_process=not self.webcam_process
