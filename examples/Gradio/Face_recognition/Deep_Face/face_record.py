@@ -145,7 +145,7 @@ class UI():
                     self.sld_nb_faces.change(self.set_nb_faces, self.sld_nb_faces)
                     
 
-        demo.queue().launch()
+        demo.queue().launch(share=True)
 
     def clear_galery(self):
         return self.gallery.update(value=[]), self.add_file.update(value=[])
@@ -288,15 +288,14 @@ class UI():
         else:
             return "Waiting"
         
-    def record_from_files(self, images, progress=gr.Progress()):
+    def record_from_files(self, images):
         if self.face_name is None:
             self.embeddings_cloud=[]
             self.is_recording=False
             return "Please input a face name"
         
         if images is not None:
-            progress(0, desc="Starting...")
-            for entry in progress.tqdm(images):
+            for entry in images:
                 image = cv2.cvtColor(cv2.imread(entry["name"]), cv2.COLOR_BGR2RGB)
                 if image is None:
                     return None
