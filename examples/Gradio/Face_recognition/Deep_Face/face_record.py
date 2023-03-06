@@ -29,7 +29,7 @@ if not faces_path.exists():
 
 
 # Build face analyzer while specifying that we want to extract just a single face
-fa = FaceAnalyzer(max_nb_faces=1)
+fa = FaceAnalyzer(max_nb_faces=3)
 
 
 box_colors=[
@@ -51,13 +51,19 @@ class UI():
         self.is_recording=False
         self.face_name=None
         self.nb_images = 20
+        self.nb_faces = 3
         # Important to set. If higher than this distance, the face is considered unknown
         self.threshold = 4e-1
         self.faces_db_preprocessed_path = Path(__file__).parent/"faces_db_preprocessed"
         self.current_name = None
         self.current_face_files = []
         self.draw_landmarks = True
+        self.webcam_process = False
         self.upgrade_faces()
+        try:
+            DeepFace.represent(np.zeros((100,100,3)), enforce_detection=False)
+        except Exception as ex:
+            pass
 
         with gr.Blocks() as demo:
             gr.Markdown("## FaceAnalyzer face recognition test")
@@ -67,9 +73,12 @@ class UI():
                         with gr.Row():
                             with gr.Column():
                                 self.rt_webcam = gr.Image(label="Input Image", source="webcam", streaming=True)
+                                self.start_streaming = gr.Button("Start webcam")
+                                self.start_streaming.click(self.start_webcam, [], [])
+
                             with gr.Column():
                                 self.rt_rec_img = gr.Image(label="Output Image")
-                                self.rt_webcam.change(self.recognize, inputs=self.rt_webcam, outputs=self.rt_rec_img, show_progress=False)
+                                self.rt_webcam.change(self.process_webcam, inputs=self.rt_webcam, outputs=self.rt_rec_img, show_progress=False)
                 with gr.TabItem('Image Recognize'):
                     with gr.Blocks():
                         with gr.Row():
@@ -77,16 +86,16 @@ class UI():
                                 self.rt_inp_img = gr.Image(label="Input Image")
                             with gr.Column():
                                 self.rt_rec_img = gr.Image(label="Output Image")
-                                self.rt_inp_img.change(self.recognize2, inputs=self.rt_inp_img, outputs=self.rt_rec_img, show_progress=True)
+                                self.rt_inp_img.change(self.process_image, inputs=self.rt_inp_img, outputs=self.rt_rec_img, show_progress=True)
                 with gr.TabItem('Add face from webcam'):
                     with gr.Blocks():
                         with gr.Row():
                             with gr.Column():
                                 self.img = gr.Image(label="Input Image", source="webcam", streaming=True)
                                 self.txtFace_name = gr.Textbox(label="face_name")
-                                self.txtFace_name.change(self.set_face_name, inputs=self.txtFace_name, show_progress=False)
                                 self.status = gr.Label(label="Status")
-                                self.img.change(self.record, inputs=self.img, outputs=self.status, show_progress=False)
+                                self.txtFace_name.change(self.set_face_name, inputs=self.txtFace_name, outputs=self.status, show_progress=False)
+                                self.img.change(self.record_from_webcam, inputs=self.img, outputs=self.status, show_progress=False)
                             with gr.Column():
                                 self.btn_start = gr.Button("Start Recording face")
                                 self.btn_start.click(self.start_stop)
@@ -97,15 +106,16 @@ class UI():
                                 self.gallery = gr.Gallery(
                                     label="Uploaded Images", show_label=False, elem_id="gallery"
                                 ).style(grid=[2], height="auto")
+                                self.btn_clear = gr.Button("Clear")
+
                                 self.add_file = gr.Files(label="Files",file_types=["image"])
                                 self.add_file.change(self.add_files, self.add_file, self.gallery)
                                 self.txtFace_name2 = gr.Textbox(label="face_name")
-                                self.txtFace_name2.change(self.set_face_name, inputs=self.txtFace_name2, show_progress=False)
-                                self.status = gr.Label(label="Status")
-                                self.img.change(self.record, inputs=self.img, outputs=self.status, show_progress=False)
-                            with gr.Column():
                                 self.btn_start = gr.Button("Build face embeddings")
-                                self.btn_start.click(self.start_stop)
+                                self.status = gr.Label(label="Status")
+                                self.txtFace_name2.change(self.set_face_name, inputs=self.txtFace_name2, outputs=self.status, show_progress=False)
+                                self.btn_start.click(self.record_from_files, inputs=self.gallery, outputs=self.status, show_progress=False)
+                                self.btn_clear.click(self.clear_galery,[],[])
                 with gr.TabItem('Known Faces List'):
                     with gr.Blocks():
                         with gr.Row():
@@ -131,8 +141,19 @@ class UI():
                     self.sld_nb_images.change(self.set_nb_images, self.sld_nb_images)
                     self.cb_draw_landmarks = gr.Checkbox(label="Draw landmarks", value=True)
                     self.cb_draw_landmarks.change(self.set_draw_landmarks, self.cb_draw_landmarks)
+                    self.sld_nb_faces = gr.Slider(1,50,3,label="Maximum number of faces")
+                    self.sld_nb_faces.change(self.set_nb_faces, self.sld_nb_faces)
+                    
 
         demo.queue().launch()
+
+    def clear_galery(self):
+        self.gallery.update(value=[])
+
+    def start_webcam(self):
+        self.webcam_process=not self.webcam_process
+
+
     def add_files(self, files):
         for file in files:
             img = cv2.cvtColor(cv2.imread(file.name), cv2.COLOR_BGR2RGB)
@@ -147,6 +168,10 @@ class UI():
 
     def set_draw_landmarks(self, value):
         self.draw_landmarks=value
+
+    def set_nb_faces(self,nb_faces):
+        self.nb_faces = nb_faces
+        fa.nb_faces = nb_faces
 
     def cosine_distance(self, u, v):
         """
@@ -174,14 +199,17 @@ class UI():
                 finger_print = pickle.load(f)
                 self.known_faces.append(finger_print)
             self.known_faces_names.append(file.stem)
+            
         if hasattr(self, "faces_list"):
             self.faces_list.update([[n] for n in self.known_faces_names])
 
     def set_face_name(self, face_name):
         self.face_name=face_name
+        return f"face name set to {self.face_name}"
 
     def start_stop(self):
         self.is_recording=True
+        
 
     def process_db(self, images):
         for i,image in enumerate(images):
@@ -199,7 +227,7 @@ class UI():
                     # Get a realigned version of the landmarksx
                     vertices = face.get_face_outer_vertices()
                     image = face.getFaceBox(image, vertices,margins=(30,30,30,30))
-                    embedding = DeepFace.represent(image)[0]["embedding"]
+                    embedding = DeepFace.represent(image, enforce_detection=False)[0]["embedding"]
                     embeddings_cloud.append(embedding)
                     cv2.imwrite(str(self.faces_db_preprocessed_path/f"im_{i}.png"), cv2.cvtColor(image, cv2.COLOR_BGR2RGB)) 
                 except Exception as ex:
@@ -214,11 +242,12 @@ class UI():
             pickle.dump({"mean":embeddings_cloud_mean, "inv_cov":embeddings_cloud_inv_cov},f)
         print(f"Saved {name}")
 
-    def record(self, image):
+    def record_from_webcam(self, image):
         if self.face_name is None:
             self.embeddings_cloud=[]
             self.is_recording=False
             return "Please input a face name"
+        
         if self.is_recording and image is not None:
             if self.i < self.nb_images:
                 # Process the image to extract faces and draw the masks on the face in the image
@@ -228,7 +257,7 @@ class UI():
                         face = fa.faces[0]
                         vertices = face.get_face_outer_vertices()
                         image = face.getFaceBox(image, vertices, margins=(40,40,40,40))
-                        embedding = DeepFace.represent(image)[0]["embedding"]
+                        embedding = DeepFace.represent(image, enforce_detection=False)[0]["embedding"]
                         self.embeddings_cloud.append(embedding)
                         self.i+=1
                         cv2.imshow('Face Mesh', cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
@@ -255,8 +284,60 @@ class UI():
                 return f"Saved {name} embeddings"
         else:
             return "Waiting"
+        
+    def record_from_files(self, images, progress=gr.Progress()):
+        if self.face_name is None:
+            self.embeddings_cloud=[]
+            self.is_recording=False
+            return "Please input a face name"
+        
+        if images is not None:
+            progress(0, desc="Starting...")
+            for entry in progress.tqdm(images):
+                image = cv2.cvtColor(cv2.imread(entry["name"]), cv2.COLOR_BGR2RGB)
+                if image is None:
+                    return None
+                # Process the image to extract faces and draw the masks on the face in the image
+                if image.shape[1]>640:
+                    image = cv2.resize(image,(int(640*(image.shape[1]/image.shape[0])),640))
+                fa.image_size=(image.shape[1],image.shape[0],3)
+                # Process the image to extract faces and draw the masks on the face in the image
+                fa.process(image)
+                if fa.nb_faces>0:
+                    try:
+                        face = fa.faces[0]
+                        vertices = face.get_face_outer_vertices()
+                        image = face.getFaceBox(image, vertices, margins=(40,40,40,40))
+                        embedding = DeepFace.represent(image, enforce_detection=False)[0]["embedding"]
+                        self.embeddings_cloud.append(embedding)
+                        self.i+=1
+                        cv2.imshow('Face Mesh', cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+                    except Exception as ex:
+                        print(ex)
+            # Now let's find out where the face lives inside the latent space (128 dimensions space)
 
-    def recognize(self, image):
+            embeddings_cloud = np.array(self.embeddings_cloud)
+            embeddings_cloud_mean = embeddings_cloud.mean(axis=0)
+            embeddings_cloud_inv_cov = embeddings_cloud.std(axis=0)
+            # Now we save it.
+            # create a dialog box to ask for the subject name
+            name = self.face_name
+            with open(str(faces_path/f"{name}.pkl"),"wb") as f:
+                pickle.dump({"mean":embeddings_cloud_mean, "inv_cov":embeddings_cloud_inv_cov},f)
+            print(f"Saved {name} embeddings")
+            self.i=0
+            self.embeddings_cloud=[]
+            self.is_recording=False
+            self.upgrade_faces()
+
+            return f"Saved {name} embeddings"
+        else:
+            return "Waiting"
+
+    def process_webcam(self, image):
+        if not self.webcam_process:
+            return None
+        
         # Process the image to extract faces and draw the masks on the face in the image
         fa.process(image)
 
@@ -266,7 +347,7 @@ class UI():
                     face = fa.faces[i]
                     vertices = face.get_face_outer_vertices()
                     face_image = face.getFaceBox(image, vertices, margins=(40,40,40,40))
-                    embedding = DeepFace.represent(face_image)[0]["embedding"]
+                    embedding = DeepFace.represent(face_image, enforce_detection=False)[0]["embedding"]
                     if self.draw_landmarks:
                         face.draw_landmarks(image, color=(0,0,0))
                     nearest_distance = 1e100
@@ -293,11 +374,14 @@ class UI():
         # Return the resulting frame
         return image      
         
-    def recognize2(self, image):
+    def process_image(self, image):
         if image is None:
             return None
-        image = cv2.resize(image, fa.image_size)
         # Process the image to extract faces and draw the masks on the face in the image
+        if image.shape[1]>640:
+            image = cv2.resize(image,(int(640*(image.shape[1]/image.shape[0])),640))
+        fa.image_size=(image.shape[1],image.shape[0],3)
+        
         fa.process(image)
 
         if fa.nb_faces>0:
@@ -306,7 +390,7 @@ class UI():
                     face = fa.faces[i]
                     vertices = face.get_face_outer_vertices()
                     face_image = face.getFaceBox(image, vertices, margins=(40,40,40,40))
-                    embedding = DeepFace.represent(face_image)[0]["embedding"]
+                    embedding = DeepFace.represent(face_image, enforce_detection=False)[0]["embedding"]
                     if self.draw_landmarks:
                         face.draw_landmarks(image, color=(0,0,0))
                     nearest_distance = 1e100
@@ -328,7 +412,7 @@ class UI():
                     else:
                         face.draw_bounding_box(image, thickness=1,text=f"{self.known_faces_names[nearest]}:{nearest_distance:.3e}")
                 except Exception as ex:
-                    pass
+                    image=face_image
 
         # Return the resulting frame
         return image        
