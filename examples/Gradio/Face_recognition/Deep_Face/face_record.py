@@ -145,7 +145,7 @@ class UI():
                     self.sld_nb_faces.change(self.set_nb_faces, self.sld_nb_faces)
                     
 
-        demo.queue().launch(share=True)
+        demo.queue().launch()
 
     def clear_galery(self):
         return self.gallery.update(value=[]), self.add_file.update(value=[])
