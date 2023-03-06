@@ -74,7 +74,7 @@ class UI():
                             with gr.Column():
                                 self.rt_webcam = gr.Image(label="Input Image", source="webcam", streaming=True)
                                 self.start_streaming = gr.Button("Start webcam")
-                                self.start_streaming.click(self.start_webcam, [], [])
+                                self.start_streaming.click(self.start_webcam, [], [self.start_streaming])
 
                             with gr.Column():
                                 self.rt_rec_img = gr.Image(label="Output Image")
@@ -152,6 +152,7 @@ class UI():
 
     def start_webcam(self):
         self.webcam_process=not self.webcam_process
+        return self.start_streaming.update(value="Stop webcam") if self.webcam_process else self.start_streaming.update(value="Start webcam")
 
 
     def add_files(self, files):
@@ -250,6 +251,8 @@ class UI():
         
         if self.is_recording and image is not None:
             if self.i < self.nb_images:
+                fa.image_size=(640, 480, 3)
+
                 # Process the image to extract faces and draw the masks on the face in the image
                 fa.process(image)
                 if fa.nb_faces>0:
@@ -338,6 +341,7 @@ class UI():
         if not self.webcam_process:
             return None
         
+        fa.image_size=(640, 480, 3)
         # Process the image to extract faces and draw the masks on the face in the image
         fa.process(image)
 
