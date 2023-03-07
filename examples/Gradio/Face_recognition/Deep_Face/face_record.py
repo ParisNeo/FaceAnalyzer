@@ -52,6 +52,7 @@ class UI():
         self.face_name=None
         self.nb_images = 20
         self.nb_faces = 3
+
         # Important to set. If higher than this distance, the face is considered unknown
         self.threshold = 4e-1
         self.faces_db_preprocessed_path = Path(__file__).parent/"faces_db_preprocessed"
@@ -66,6 +67,7 @@ class UI():
             pass
 
         with gr.Blocks() as demo:
+            self.faces = gr.State([])
             gr.Markdown("## FaceAnalyzer face recognition test")
             with gr.Tabs():
                 with gr.TabItem('Realtime Recognize'):
@@ -103,19 +105,19 @@ class UI():
                     with gr.Blocks():
                         with gr.Row():
                             with gr.Column():
+                                self.add_file = gr.Files(label="Files",file_types=["image"])
+                                with gr.Row():
+                                    self.txtFace_name2 = gr.Textbox(label="face_name")
+                                self.btn_start = gr.Button("Build face embeddings")
+                                self.status = gr.Label(label="Status")
+
                                 self.gallery = gr.Gallery(
                                     label="Uploaded Images", show_label=True, height=300, elem_id="gallery"
                                 ).style(grid=[2], height="auto")
                                 self.btn_clear = gr.Button("Clear Gallery")
-
-                                self.add_file = gr.Files(label="Files",file_types=["image"])
-                                self.add_file.change(self.add_files, self.add_file, self.gallery)
-                                self.txtFace_name2 = gr.Textbox(label="face_name")
-                                self.btn_start = gr.Button("Build face embeddings")
-                                self.status = gr.Label(label="Status")
-                                self.txtFace_name2.change(self.set_face_name, inputs=self.txtFace_name2, outputs=self.status, show_progress=False)
-                                self.btn_start.click(self.record_from_files, inputs=self.gallery, outputs=self.status, show_progress=True)
+                                self.btn_start.click(self.record_from_files, inputs=[self.gallery, self.txtFace_name2], outputs=self.status, show_progress=True)
                                 self.btn_clear.click(self.clear_galery,[],[self.gallery, self.add_file])
+                                self.add_file.change(self.add_files, self.add_file, [self.gallery, self.faces])
                 with gr.TabItem('Known Faces List'):
                     with gr.Blocks():
                         with gr.Row():
@@ -147,6 +149,33 @@ class UI():
 
         demo.queue().launch()
 
+    
+
+    def draw_name_on_bbox(self, image, bbox, name, font=cv2.FONT_HERSHEY_SIMPLEX,
+                        font_scale=1, thickness=2, color=(0, 0, 255)):
+        # Upscale the image to avoid pixelization of the text
+        height, width = image.shape[:2]
+        scale = max(1, int(max(height, width) / 800))
+        new_height, new_width = int(height * scale), int(width * scale)
+        resized_image = cv2.resize(image, (new_width, new_height))
+
+        # Upscale the bounding box
+        bbox = [int(val * scale) for val in bbox]
+
+        # Draw the bounding box and the name
+        x1, y1, x2, y2 = bbox
+        cv2.rectangle(resized_image, (x1, y1), (x2, y2), color, thickness)
+        text_size, _ = cv2.getTextSize(name, font, font_scale, thickness)
+        text_x = x1 + (x2 - x1 - text_size[0]) // 2
+        text_y = y1 - text_size[1] - 5
+        cv2.putText(resized_image, name, (text_x, text_y), font, font_scale, color, thickness)
+
+        # Downscale the image back to its original size
+        final_image = cv2.resize(resized_image, (width, height))
+
+        return final_image
+
+
     def clear_galery(self):
         return self.gallery.update(value=[]), self.add_file.update(value=[])
 
@@ -156,11 +185,15 @@ class UI():
 
 
     def add_files(self, files):
-        for file in files:
-            img = cv2.cvtColor(cv2.imread(file.name), cv2.COLOR_BGR2RGB)
-            self.current_face_files.append(img)
-        return self.current_face_files
-    
+        current_face_files = []
+        if files is not None:
+            for file in files:
+                img = cv2.cvtColor(cv2.imread(file.name), cv2.COLOR_BGR2RGB)
+                current_face_files.append(img)
+            return current_face_files, current_face_files
+        else:
+            return []
+            
     def set_th(self, value):
         self.threshold=value
 
@@ -192,6 +225,7 @@ class UI():
 
     def upgrade_faces(self):
         # Load faces
+        print("Reloading faces")
         self.known_faces=[]
         self.known_faces_names=[]
         face_files = [f for f in faces_path.iterdir() if f.name.endswith("pkl")]
@@ -244,7 +278,7 @@ class UI():
         print(f"Saved {name}")
 
     def record_from_webcam(self, image):
-        if self.face_name is None:
+        if self.face_name is None or self.face_name=="":
             self.embeddings_cloud=[]
             self.is_recording=False
             return "Please input a face name"
@@ -287,8 +321,8 @@ class UI():
         else:
             return "Waiting"
         
-    def record_from_files(self, images):
-        if self.face_name is None:
+    def record_from_files(self, images, face_name):
+        if face_name is None or face_name=="":
             self.embeddings_cloud=[]
             self.is_recording=False
             return "Please input a face name"
@@ -323,16 +357,15 @@ class UI():
             embeddings_cloud_inv_cov = embeddings_cloud.std(axis=0)
             # Now we save it.
             # create a dialog box to ask for the subject name
-            name = self.face_name
-            with open(str(faces_path/f"{name}.pkl"),"wb") as f:
+            with open(str(faces_path/f"{face_name}.pkl"),"wb") as f:
                 pickle.dump({"mean":embeddings_cloud_mean, "inv_cov":embeddings_cloud_inv_cov},f)
-            print(f"Saved {name} embeddings")
+            print(f"Saved {face_name} embeddings")
             self.i=0
             self.embeddings_cloud=[]
             self.is_recording=False
             self.upgrade_faces()
 
-            return f"Saved {name} embeddings"
+            return f"Saved {face_name} embeddings"
         else:
             return "Waiting"
 
@@ -345,6 +378,7 @@ class UI():
         fa.process(image)
 
         if fa.nb_faces>0:
+            bboxes_and_names=[]
             for i in range(fa.nb_faces):
                 try:
                     face = fa.faces[i]
@@ -367,13 +401,10 @@ class UI():
                             nearest_distance = distance
                             nearest = i
                             
-                    if nearest_distance>self.threshold:
-                        face.draw_bounding_box(image, thickness=1,text=f"Unknown:{nearest_distance:.3e}")
-                    else:
-                        face.draw_bounding_box(image, thickness=1,text=f"{self.known_faces_names[nearest]}:{nearest_distance:.3e}")
+                    bboxes_and_names.append([face.bounding_box, f"Unknown:{nearest_distance:.2e}" if nearest_distance>self.threshold else f"{self.known_faces_names[nearest]}:{nearest_distance:.2e}"])
                 except Exception as ex:
                     pass
-
+            image = fa.draw_names_on_bboxes(image,bboxes_and_names,upscale=2)
         # Return the resulting frame
         return image      
         

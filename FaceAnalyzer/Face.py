@@ -1552,6 +1552,19 @@ class Face():
             :
             ] = dst_crop
         return dst_image
+    
+
+    @property
+    def bounding_box(self):
+        """
+        Calculate the bounding box for a set of landmarks.
+
+        Returns:
+            Tuple of (x, y, width, height) representing the bounding box of the landmarks.
+        """        
+        pt1 = self.npLandmarks.min(axis=0)
+        pt2 = self.npLandmarks.max(axis=0)
+        return pt1[0], pt1[1], pt2[0], pt2[1]
 
     def draw_bounding_box(self, image:np.ndarray, color:tuple=(255,0,0), thickness:int=1, text=None):
         """Draws a bounding box around the face

@@ -108,3 +108,32 @@ class FaceAnalyzer():
         npImage = np.array(image)[...,:3]
         fa.process(npImage)
         return fa
+
+
+    def draw_names_on_bboxes(self, image, bboxes_and_names, font=cv2.FONT_HERSHEY_SIMPLEX,
+                            font_scale=1, thickness=2, color=(0, 0, 255), upscale=1):
+        # Upscale the image to avoid pixelization of the text
+        height, width = image.shape[:2]
+        new_height, new_width = int(height * upscale), int(width * upscale)
+        resized_image = cv2.resize(image, (new_width, new_height))
+
+        # Upscale the bounding boxes
+        bboxes = [bbox_and_name[0] for bbox_and_name in bboxes_and_names]
+        scaled_bboxes = [[int(val * upscale) for val in bbox] for bbox in bboxes]
+
+        # Draw the bounding boxes and names
+        for i, bbox_and_name in enumerate(bboxes_and_names):
+            bbox = scaled_bboxes[i]
+            name = bbox_and_name[1]
+            x1, y1, x2, y2 = bbox
+            cv2.rectangle(resized_image, (x1, y1), (x2, y2), color, thickness)
+            text_size, _ = cv2.getTextSize(name, font, font_scale, thickness)
+            text_x = x1 + (x2 - x1 - text_size[0]) // 2
+            text_y = y1 - text_size[1] - 5
+            cv2.rectangle(resized_image, (text_x, text_y-text_size[1]-5), (text_x+text_size[0], text_y+text_size[1]), color, -1)
+            cv2.putText(resized_image, name, (text_x, text_y), font, font_scale,(255-color[0], 255-color[1], 255-color[2]) , thickness)
+
+        # Downscale the image back to its original size
+        final_image = cv2.resize(resized_image, (width, height))
+
+        return final_image
