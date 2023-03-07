@@ -263,7 +263,6 @@ class UI():
                         embedding = DeepFace.represent(image, enforce_detection=False)[0]["embedding"]
                         self.embeddings_cloud.append(embedding)
                         self.i+=1
-                        cv2.imshow('Face Mesh', cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
                     except Exception as ex:
                         print(ex)
                 return f"Processing frame {self.i}/{self.nb_images}..."
@@ -296,6 +295,7 @@ class UI():
         
         if images is not None:
             for entry in images:
+                print(f"Processing image {entry['name']}")
                 image = cv2.cvtColor(cv2.imread(entry["name"]), cv2.COLOR_BGR2RGB)
                 if image is None:
                     return None
@@ -306,6 +306,7 @@ class UI():
                 # Process the image to extract faces and draw the masks on the face in the image
                 fa.process(image)
                 if fa.nb_faces>0:
+                    print(f"Found {fa.nb_faces} faces")
                     try:
                         face = fa.faces[0]
                         vertices = face.get_face_outer_vertices()
@@ -313,7 +314,6 @@ class UI():
                         embedding = DeepFace.represent(image, enforce_detection=False)[0]["embedding"]
                         self.embeddings_cloud.append(embedding)
                         self.i+=1
-                        cv2.imshow('Face Mesh', cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
                     except Exception as ex:
                         print(ex)
             # Now let's find out where the face lives inside the latent space (128 dimensions space)
