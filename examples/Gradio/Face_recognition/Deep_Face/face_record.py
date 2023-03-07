@@ -202,7 +202,7 @@ class UI():
             self.known_faces_names.append(file.stem)
             
         if hasattr(self, "faces_list"):
-            self.faces_list.update([[n] for n in self.known_faces_names])
+            self.faces_list.update(value=[[n] for n in self.known_faces_names])
 
     def set_face_name(self, face_name):
         self.face_name=face_name
