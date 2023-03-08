@@ -22,10 +22,7 @@ from deepface import DeepFace
 nb_images=50
 
 
-# If faces path is empty then make it
-faces_path = Path(__file__).parent/"faces"
-if not faces_path.exists():
-    faces_path.mkdir(parents=True, exist_ok=True)
+
 
 
 # Build face analyzer while specifying that we want to extract just a single face
@@ -46,6 +43,10 @@ import gradio as gr
 import numpy as np
 class UI():
     def __init__(self) -> None:
+        # If faces path is empty then make it
+        self.faces_path = Path(__file__).parent/"faces"
+        if not self.faces_path.exists():
+            self.faces_path.mkdir(parents=True, exist_ok=True)
         self.i=0
         self.embeddings_cloud = []
         self.is_recording=False
@@ -68,6 +69,7 @@ class UI():
 
         with gr.Blocks() as demo:
             self.faces = gr.State([])
+            self.distance_type = gr.State("cosine")
             gr.Markdown("## FaceAnalyzer face recognition test")
             with gr.Tabs():
                 with gr.TabItem('Realtime Recognize'):
@@ -112,8 +114,8 @@ class UI():
                                 self.status = gr.Label(label="Status")
 
                                 self.gallery = gr.Gallery(
-                                    label="Uploaded Images", show_label=True, height=300, elem_id="gallery"
-                                ).style(grid=[2], height="auto")
+                                    label="Uploaded Images", show_label=True, height=300, elem_id="gallery", visible=False  
+                                ).style(grid=[8], height="auto")
                                 self.btn_clear = gr.Button("Clear Gallery")
                                 self.btn_start.click(self.record_from_files, inputs=[self.gallery, self.txtFace_name2], outputs=self.status, show_progress=True)
                                 self.btn_clear.click(self.clear_galery,[],[self.gallery, self.add_file])
@@ -122,19 +124,11 @@ class UI():
                     with gr.Blocks():
                         with gr.Row():
                             with gr.Column():
-                                if len(self.known_faces_names)>0:
-                                    self.faces_list = gr.Dataframe(
-                                        headers=["Face Name"],
-                                        datatype=["str"],
-                                        label="Faces",
-                                        value=[[n] for n in self.known_faces_names]
-                                    )
-                                else:
-                                    self.faces_list = gr.Dataframe(
-                                        headers=["Face Name"],
-                                        datatype=["str"],
-                                        label="Faces"
-                                    )
+                                self.btn_reset_faces = gr.Button("clear faces list")
+                                self.btn_get_known_faces_list = gr.Button("get known faces list")
+                                self.faces_list_status = gr.Label(label="Status")
+                                self.btn_reset_faces.click(self.clear_faces,[],[self.faces_list_status])
+                                self.btn_get_known_faces_list.click(self.get_known_faces_list,[],[self.faces_list_status])
             with gr.Row():
                 with gr.Accordion(label="Options", open=False):
                     self.sld_threshold = gr.Slider(1e-2,10,4e-1,step=1e-2,label="Recognition threshold")
@@ -145,36 +139,45 @@ class UI():
                     self.cb_draw_landmarks.change(self.set_draw_landmarks, self.cb_draw_landmarks)
                     self.sld_nb_faces = gr.Slider(1,50,3,label="Maximum number of faces")
                     self.sld_nb_faces.change(self.set_nb_faces, self.sld_nb_faces)
+                    self.rd_distance_type = gr.Radio(
+                        ["cosine", "L1", "L2"], label="Distance", value="cosine"
+                    )
+                    self.rd_distance_type.change(self.change_distance, self.rd_distance_type, self.distance_type)
                     
 
         demo.queue().launch()
 
-    
+    def get_known_faces_list(self):
+        return ", ".join(self.known_faces_names)
 
-    def draw_name_on_bbox(self, image, bbox, name, font=cv2.FONT_HERSHEY_SIMPLEX,
-                        font_scale=1, thickness=2, color=(0, 0, 255)):
-        # Upscale the image to avoid pixelization of the text
-        height, width = image.shape[:2]
-        scale = max(1, int(max(height, width) / 800))
-        new_height, new_width = int(height * scale), int(width * scale)
-        resized_image = cv2.resize(image, (new_width, new_height))
+    def clear_directory(self, directory_path):
+        """
+        Recursively removes all files and subdirectories within the specified directory.
 
-        # Upscale the bounding box
-        bbox = [int(val * scale) for val in bbox]
+        Args:
+            directory_path (str): The path to the directory to clear.
 
-        # Draw the bounding box and the name
-        x1, y1, x2, y2 = bbox
-        cv2.rectangle(resized_image, (x1, y1), (x2, y2), color, thickness)
-        text_size, _ = cv2.getTextSize(name, font, font_scale, thickness)
-        text_x = x1 + (x2 - x1 - text_size[0]) // 2
-        text_y = y1 - text_size[1] - 5
-        cv2.putText(resized_image, name, (text_x, text_y), font, font_scale, color, thickness)
+        Returns:
+            None
+        """
+        directory = Path(directory_path)
+        for item in directory.iterdir():
+            if item.is_file():
+                item.unlink()
+            elif item.is_dir():
+                self.clear_directory(item)
+                item.rmdir()
 
-        # Downscale the image back to its original size
-        final_image = cv2.resize(resized_image, (width, height))
+    def clear_faces(self):
+        """
+            clears faces
+        """
+        self.clear_directory(self.faces_path)
+        self.upgrade_faces()
+        return "Faces removed"
 
-        return final_image
-
+    def change_distance(self, type):
+        return self.distance_type.update(value=type)
 
     def clear_galery(self):
         return self.gallery.update(value=[]), self.add_file.update(value=[])
@@ -228,15 +231,15 @@ class UI():
         print("Reloading faces")
         self.known_faces=[]
         self.known_faces_names=[]
-        face_files = [f for f in faces_path.iterdir() if f.name.endswith("pkl")]
+        face_files = [f for f in self.faces_path.iterdir() if f.name.endswith("pkl")]
         for file in face_files:
             with open(str(file),"rb") as f:
                 finger_print = pickle.load(f)
                 self.known_faces.append(finger_print)
             self.known_faces_names.append(file.stem)
             
-        if hasattr(self, "faces_list"):
-            self.faces_list.update(value=[[n] for n in self.known_faces_names])
+        # if hasattr(self, "faces_list"):
+        #    self.faces_list.update(value=[[n] for n in self.known_faces_names])
 
     def set_face_name(self, face_name):
         self.face_name=face_name
@@ -273,7 +276,7 @@ class UI():
         # Now we save it.
         # create a dialog box to ask for the subject name
         name = self.face_name
-        with open(str(faces_path/f"{name}.pkl"),"wb") as f:
+        with open(str(self.faces_path/f"{name}.pkl"),"wb") as f:
             pickle.dump({"mean":embeddings_cloud_mean, "inv_cov":embeddings_cloud_inv_cov},f)
         print(f"Saved {name}")
 
@@ -309,7 +312,7 @@ class UI():
                 # Now we save it.
                 # create a dialog box to ask for the subject name
                 name = self.face_name
-                with open(str(faces_path/f"{name}.pkl"),"wb") as f:
+                with open(str(self.faces_path/f"{name}.pkl"),"wb") as f:
                     pickle.dump({"mean":embeddings_cloud_mean, "inv_cov":embeddings_cloud_inv_cov},f)
                 print(f"Saved {name} embeddings")
                 self.i=0
@@ -357,7 +360,7 @@ class UI():
             embeddings_cloud_inv_cov = embeddings_cloud.std(axis=0)
             # Now we save it.
             # create a dialog box to ask for the subject name
-            with open(str(faces_path/f"{face_name}.pkl"),"wb") as f:
+            with open(str(self.faces_path/f"{face_name}.pkl"),"wb") as f:
                 pickle.dump({"mean":embeddings_cloud_mean, "inv_cov":embeddings_cloud_inv_cov},f)
             print(f"Saved {face_name} embeddings")
             self.i=0
@@ -379,9 +382,9 @@ class UI():
 
         if fa.nb_faces>0:
             bboxes_and_names=[]
-            for i in range(fa.nb_faces):
+            for j in range(fa.nb_faces):
                 try:
-                    face = fa.faces[i]
+                    face = fa.faces[j]
                     vertices = face.get_face_outer_vertices()
                     face_image = face.getFaceBox(image, vertices, margins=(40,40,40,40))
                     embedding = DeepFace.represent(face_image, enforce_detection=False)[0]["embedding"]
@@ -390,13 +393,15 @@ class UI():
                     nearest_distance = 1e100
                     nearest = 0
                     for i, known_face in enumerate(self.known_faces):
-                        # absolute distance
-                        distance = np.abs(known_face["mean"]-embedding).sum()
-                        # euclidian distance
-                        #diff = known_face["mean"]-embedding
-                        #distance = np.sqrt(diff@diff.T)
-                        # Cosine distance
-                        distance = self.cosine_distance(known_face["mean"], embedding)
+                        if self.distance_type.value == "cosine":
+                            # Cosine distance
+                            distance = self.cosine_distance(known_face["mean"], embedding)
+                        elif self.distance_type.value =="L1":
+                            # absolute distance
+                            distance = np.abs(known_face["mean"]-embedding).sum()
+                        elif self.distance_type.value == "L2":
+                            # absolute distance
+                            distance = np.sqrt(np.square(known_face["mean"]-embedding).sum())
                         if distance<nearest_distance:
                             nearest_distance = distance
                             nearest = i
@@ -404,7 +409,8 @@ class UI():
                     bboxes_and_names.append([face.bounding_box, f"Unknown:{nearest_distance:.2e}" if nearest_distance>self.threshold else f"{self.known_faces_names[nearest]}:{nearest_distance:.2e}"])
                 except Exception as ex:
                     pass
-            image = fa.draw_names_on_bboxes(image,bboxes_and_names,upscale=2)
+            if len(bboxes_and_names)>0:
+                image = fa.draw_names_on_bboxes(image,bboxes_and_names,upscale=2)
         # Return the resulting frame
         return image      
         
@@ -419,9 +425,10 @@ class UI():
         fa.process(image)
 
         if fa.nb_faces>0:
-            for i in range(fa.nb_faces):
+            bboxes_and_names=[]
+            for j in range(fa.nb_faces):
                 try:
-                    face = fa.faces[i]
+                    face = fa.faces[j]
                     vertices = face.get_face_outer_vertices()
                     face_image = face.getFaceBox(image, vertices, margins=(40,40,40,40))
                     embedding = DeepFace.represent(face_image, enforce_detection=False)[0]["embedding"]
@@ -430,23 +437,24 @@ class UI():
                     nearest_distance = 1e100
                     nearest = 0
                     for i, known_face in enumerate(self.known_faces):
-                        # absolute distance
-                        distance = np.abs(known_face["mean"]-embedding).sum()
-                        # euclidian distance
-                        #diff = known_face["mean"]-embedding
-                        #distance = np.sqrt(diff@diff.T)
-                        # Cosine distance
-                        distance = self.cosine_distance(known_face["mean"], embedding)
+                        if self.distance_type.value == "cosine":
+                            # Cosine distance
+                            distance = self.cosine_distance(known_face["mean"], embedding)
+                        elif self.distance_type.value =="L1":
+                            # absolute distance
+                            distance = np.abs(known_face["mean"]-embedding).sum()
+                        elif self.distance_type.value == "L2":
+                            # absolute distance
+                            distance = np.sqrt(np.square(known_face["mean"]-embedding).sum())
                         if distance<nearest_distance:
                             nearest_distance = distance
                             nearest = i
                             
-                    if nearest_distance>self.threshold:
-                        face.draw_bounding_box(image, thickness=1,text=f"Unknown:{nearest_distance:.3e}")
-                    else:
-                        face.draw_bounding_box(image, thickness=1,text=f"{self.known_faces_names[nearest]}:{nearest_distance:.3e}")
+                    bboxes_and_names.append([face.bounding_box, f"Unknown:{nearest_distance:.2e}" if nearest_distance>self.threshold else f"{self.known_faces_names[nearest]}:{nearest_distance:.2e}"])
                 except Exception as ex:
                     image=face_image
+            if len(bboxes_and_names)>0:
+                image = fa.draw_names_on_bboxes(image,bboxes_and_names,upscale=2)
 
         # Return the resulting frame
         return image        
