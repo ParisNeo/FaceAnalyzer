@@ -307,7 +307,7 @@ class Face():
     simplified_face_features = [
         10, 67, 54, 162, 127, 234, 93, 132,172,150,176,148,152,377,378,365,435,323,447,454,264,389,251, 332, 338, #Oval
         139, 105, 107, 151, 8, 9, 336, 334, 368,                            #  Eyelids
-        130, 145, 155, 6, 382, 374, 359, 159, 386,                  #  Eyes
+        130, 145, 155, 6, 382, 374, 263, 159, 386,                  #  Eyes
         129, 219, 79, 238, 2, 458, 457, 439, 358, 1, 4, 5, 197,     #  Nose
         61, 84, 314, 409, 14, 87, 81, 12,37,267, 402, 311, 321, 269, 39, 415, 91, 178, 73, 303, 325,
         50, 207, 280, 427
@@ -411,15 +411,15 @@ class Face():
         #Using the canonical face coordinates
         noze_tip_pos = [0,0.004632,0.075866]
         self.face_3d_reference_positions=(np.array([
-        [0,0.004632,0.075866],            # Nose tip        
+        [0, 0.004632, 0.075866],            # Nose tip        
         [ 0.04671,-0.026645,0.030841],      # Left eye extremety
         [-0.04671,-0.026645,0.030841],      # Right eye extremety
         [0,-0.04886,0.053853],              # forehead center
         #[0,-0.079422,0.051812]             # Chin 
-        ])-np.array(noze_tip_pos))*1000 # go to centimeters
+        ])-np.array(noze_tip_pos))*1000      # go to centimeters
         self.face_reference_landmark_ids = [
             4,          # Nose tip
-            359,        # Left eye extremety
+            263,        # Left eye extremety
             130,        # Right eye extremety
             151,        # Forehead
             #199         # Chin
@@ -446,7 +446,7 @@ class Face():
             #152,        # Chin
             #264,        # Right
             130,        # Left left eye
-            359,        # Right right eye
+            263,        # Right right eye
             151         # forehead center
             ]
         """
@@ -770,6 +770,20 @@ class Face():
             y = int(pos[1] - overlay_.size[1] / 2)
             pImage.paste(overlay_, (x, y), overlay_)
         return np.array(pImage).astype(np.uint8)
+    
+    def reset_face_3d_reference_positions(self):
+        self.noze_tip_pos = [0,0.004632,0.075866]
+        self.face_3d_reference_positions = (np.array([
+        [0, 0.004632, 0.075866],            # Nose tip        
+        [ 0.04671,-0.026645,0.030841],      # Left eye extremety
+        [-0.04671,-0.026645,0.030841],      # Right eye extremety
+        [0,-0.04886,0.053853],              # forehead center
+        #[0,-0.079422,0.051812]             # Chin 
+        ])-np.array(self.noze_tip_pos))*1000 #go to centimeters
+        
+    def lock_face_3d_reference_positions(self):
+        self.face_3d_reference_positions = self.npLandmarks[self.face_reference_landmark_ids]-np.array(self.npLandmarks[Face.nose_tip_index])
+        print(self.face_3d_reference_positions)
 
     def get_head_posture(self, camera_matrix:np.ndarray = None, dist_coeffs:np.ndarray=np.zeros((4,1)))->tuple:
         """Gets the posture of the head (position in cartesian space and Euler angles)
@@ -787,7 +801,6 @@ class Face():
             camera_matrix= buildCameraMatrix(size=self.image_shape)
 
         # Use opencv's PnPsolver to solve the rotation problem
-
         face_2d_positions = self.npLandmarks[self.face_reference_landmark_ids,:2]
         (success, face_ori, face_pos, _) = cv2.solvePnPRansac(
                                                     self.face_3d_reference_positions.astype(np.float32),
