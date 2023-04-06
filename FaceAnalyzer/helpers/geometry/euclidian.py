@@ -20,8 +20,8 @@ def buildCameraMatrix(focal_length:float=None, center:tuple=None, size=(640,480)
     Returns:
         np.ndarray: The camera matrix
     """
-    focal_length = size[1]
-    center = (size[1]/2, size[0]/2)
+    focal_length = 500#size[1]
+    center = (size[0]/2, size[1]/2)
     camera_matrix = np.array(
                             [[focal_length, 0, center[0]],
                             [0, focal_length, center[1]],
