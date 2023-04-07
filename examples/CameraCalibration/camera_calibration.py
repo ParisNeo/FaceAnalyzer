@@ -1,8 +1,8 @@
 import cv2
-from FaceAnalyzer.helpers.calibration import calibrate_camera
+from FaceAnalyzer.helpers.calibration import calibrate_camera_from_points
 import numpy as np
 # Define the number of corners in the checkerboard and the size of each square
-board_size = (7, 6)
+board_size = (8, 6)
 square_size = 25
 
 # Initialize arrays to store object points and image points
@@ -42,7 +42,7 @@ while True:
 cap.release()
 
 # Calibrate the camera
-ret, mtx, dist, rvecs, tvecs = calibrate_camera(imgpoints, objpoints, gray.shape[::-1], None, None)
+ret, mtx, dist, rvecs, tvecs = calibrate_camera_from_points(imgpoints, objpoints, gray.shape[::-1], None, None)
 
 # Print the calibration results
 print("Camera matrix:\n", mtx)
