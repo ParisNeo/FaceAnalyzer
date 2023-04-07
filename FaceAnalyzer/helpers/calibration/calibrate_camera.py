@@ -13,14 +13,14 @@ import cv2
 import numpy as np
 import cv2
 
-def calibrate_camera_from_points(image_points, object_points, image_size, camera_matrix=None, dist_coeffs=None):
+def calibrate_camera_from_points(image_points, checkerboard_size, square_size, camera_matrix=None, dist_coeffs=None):
     """
-    Calibrates the camera using the provided image points and object points.
+    Calibrates the camera using the provided image points and checkerboard size.
     
     Parameters:
         image_points (list of numpy arrays): List of 2D points in image space.
-        object_points (list of numpy arrays): List of 3D points in world space.
-        image_size (tuple): Tuple of image dimensions (width, height).
+        checkerboard_size (tuple): Tuple of checkerboard dimensions (width, height).
+        square_size (float): The size of each checkerboard square in world units.
         camera_matrix (numpy array): Initial camera matrix estimate.
         dist_coeffs (numpy array): Initial distortion coefficients estimate.
         
@@ -33,10 +33,14 @@ def calibrate_camera_from_points(image_points, object_points, image_size, camera
     """
     
     # Prepare object points in correct format
-    object_points = [object_points]*len(image_points)
+    object_points = np.zeros((checkerboard_size[0] * checkerboard_size[1], 3), np.float32)
+    object_points[:, :2] = np.mgrid[0:checkerboard_size[0], 0:checkerboard_size[1]].T.reshape(-1, 2)
+    object_points *= square_size
+    
+    object_points_list = [object_points] * len(image_points)
     
     # Run the calibration
-    ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(object_points, image_points, image_size, camera_matrix, dist_coeffs)
+    ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(object_points_list, image_points, (image_points[0].shape[1], image_points[0].shape[0]), camera_matrix, dist_coeffs)
     
     return ret, mtx, dist, rvecs, tvecs
 

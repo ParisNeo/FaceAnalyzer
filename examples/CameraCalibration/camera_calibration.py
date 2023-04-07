@@ -11,6 +11,7 @@ imgpoints = [] # 2D points in image plane
 
 # Initialize the camera capture
 cap = cv2.VideoCapture(0)
+decimation_counter = 0
 
 while True:
     # Capture a frame from the camera
@@ -27,9 +28,12 @@ while True:
         objp = np.zeros((board_size[0]*board_size[1], 3), np.float32)
         objp[:,:2] = np.mgrid[0:board_size[0],0:board_size[1]].T.reshape(-1,2)
         objp *= square_size
-        objpoints.append(objp)
-        imgpoints.append(corners)
         
+        if decimation_counter%12==0:
+            objpoints.append(objp)
+            imgpoints.append(corners)
+        
+        decimation_counter += 1
         # Draw and display the corners
         cv2.drawChessboardCorners(frame, board_size, corners, ret)
         cv2.imshow('frame', frame)
@@ -42,7 +46,7 @@ while True:
 cap.release()
 
 # Calibrate the camera
-ret, mtx, dist, rvecs, tvecs = calibrate_camera_from_points(imgpoints, objpoints, gray.shape[::-1], None, None)
+ret, mtx, dist, rvecs, tvecs = calibrate_camera_from_points(imgpoints, board_size, square_size, camera_matrix=None, dist_coeffs=None)
 
 # Print the calibration results
 print("Camera matrix:\n", mtx)
