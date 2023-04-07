@@ -782,7 +782,10 @@ class Face():
         ])-np.array(self.noze_tip_pos))*1000 #go to centimeters
         
     def lock_face_3d_reference_positions(self):
+        
+        
         self.face_3d_reference_positions = self.npLandmarks[self.face_reference_landmark_ids]-np.array(self.npLandmarks[Face.nose_tip_index])
+        self.face_3d_reference_positions[:,2]=-self.face_3d_reference_positions[:,2]
         print(self.face_3d_reference_positions)
 
     def get_head_posture(self, camera_matrix:np.ndarray = None, dist_coeffs:np.ndarray=np.zeros((4,1)))->tuple:
