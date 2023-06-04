@@ -33,10 +33,13 @@ replace \* with the version you are using
 ## Publish it
 
 You would need to install twine before pushing the file
-
+```bash
 pip install twine
+```
 
+```bash
 python -m twine upload dist/\*
+```
 
 ## Update README.md
 
