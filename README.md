@@ -66,7 +66,7 @@ if fa.nb_faces>0:
     print(fa.faces[0].npLandmarks)
     # We can draw all landmarks
     # Get head position and orientation compared to the reference pose (here the first frame will define the orientation 0,0,0)
-    pos, ori = fa.faces[0].get_head_posture(orientation_style=1)
+    pos, ori = fa.faces[0].get_head_posture()
 
 ```
 
