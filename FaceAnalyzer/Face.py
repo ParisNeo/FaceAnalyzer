@@ -1036,7 +1036,7 @@ class Face():
             buffer.pop(0)
         # Compute Perclos
         pb = np.array(buffer)
-        perclos = ((pb<threshold).astype(np.int).sum())/len(buffer)
+        perclos = ((pb<threshold).astype(int).sum())/len(buffer)
         return perclos
 
     def draw_eyes_landmarks(self, image:np.ndarray):
@@ -1313,8 +1313,8 @@ class Face():
             mask = np.zeros_like(dest)
             try:
                 t_dest = np.array([landmarks[tr[0], 0:2], landmarks[tr[1], 0:2], landmarks[tr[2], 0:2]])
-                cv2.fillConvexPoly(mask, t_dest.astype(np.int), [1, 1, 1])
-                mask=mask.astype(np.bool)
+                cv2.fillConvexPoly(mask, t_dest.astype(int), [1, 1, 1])
+                mask=mask.astype(bool)
                 dest = dest*~mask + mask* croped
             except Exception as ex:
                 pass
@@ -1348,8 +1348,8 @@ class Face():
             mask = np.zeros_like(dest)
             try:
                 t_dest = np.array([landmarks[tr[0], 0:2], landmarks[tr[1], 0:2], landmarks[tr[2], 0:2]])
-                cv2.fillConvexPoly(mask, t_dest.astype(np.int), [1, 1, 1])
-                mask=mask.astype(np.bool)
+                cv2.fillConvexPoly(mask, t_dest.astype(int), [1, 1, 1])
+                mask=mask.astype(bool)
                 dest = dest*~mask + mask* croped
             except Exception as ex:
                 pass
@@ -1384,8 +1384,8 @@ class Face():
             mask = np.zeros_like(dest)
             try:
                 t_dest = np.array([landmarks[tr[0], 0:2], landmarks[tr[1], 0:2], landmarks[tr[2], 0:2]])
-                cv2.fillConvexPoly(mask, t_dest.astype(np.int), [1, 1, 1])
-                mask=mask.astype(np.bool)
+                cv2.fillConvexPoly(mask, t_dest.astype(int), [1, 1, 1])
+                mask=mask.astype(bool)
                 dest = dest*~mask + mask* croped
             except Exception as ex:
                 pass
@@ -1430,8 +1430,8 @@ class Face():
             dst_landmarks = dst_face.npLandmarks[landmark_indices, :2]
 
         # Clip landmarks to image size
-        src_landmarks = np.clip(src_landmarks,np.array([0,0]),np.array([src_image.shape[1],src_image.shape[0]])).astype(np.int)
-        dst_landmarks = np.clip(dst_landmarks,np.array([0,0]),np.array([src_image.shape[1],src_image.shape[0]])).astype(np.int)
+        src_landmarks = np.clip(src_landmarks,np.array([0,0]),np.array([src_image.shape[1],src_image.shape[0]])).astype(int)
+        dst_landmarks = np.clip(dst_landmarks,np.array([0,0]),np.array([src_image.shape[1],src_image.shape[0]])).astype(int)
 
 
         # Crop images
@@ -1543,7 +1543,7 @@ class Face():
                 mask = np.zeros_like(warped_t)
                 # Prepare masks
                 cv2.fillConvexPoly(mask, t_dest, [1, 1, 1])
-                mask = mask.astype(np.bool)
+                mask = mask.astype(bool)
 
                 # Build global mask
                 final_mask[dst_min_pos[1]:dst_max_pos[1],dst_min_pos[0]:dst_max_pos[0],:] = final_mask[dst_min_pos[1]:dst_max_pos[1],dst_min_pos[0]:dst_max_pos[0],:]*~mask+ mask*255
@@ -1559,7 +1559,7 @@ class Face():
         if seemless_cloning:
             dst_crop = cv2.seamlessClone(dest, dst_crop, final_mask, (int(center[0]),int(center[1])), cv2.NORMAL_CLONE)
         else:
-            final_mask= final_mask.astype(np.bool)
+            final_mask= final_mask.astype(bool)
             dst_crop = dest*final_mask + dst_crop*~final_mask
         #dst_crop = final_mask 
         dst_image[
@@ -1635,7 +1635,7 @@ class Face():
         """
         vertex_ids = self.get_face_outer_vertices()
       
-        pts= np.array([self.npLandmarks[v,:2].astype(np.int) for v in vertex_ids])
+        pts= np.array([self.npLandmarks[v,:2].astype(int) for v in vertex_ids])
         for pt in pts:
             cv2.circle(image, pt, 1, color, thickness)
 
